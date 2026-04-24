@@ -2165,31 +2165,6 @@ void FluentUI3Style::drawPrimitive(PrimitiveElement element, const QStyleOption 
     painter->setRenderHints(QPainter::Antialiasing | QPainter::TextAntialiasing | QPainter::SmoothPixmapTransform);
 
     int state = option->state;
-    if (transitionsEnabled() && widget && element == PE_IndicatorBranch && (option->state & State_Children))
-    {
-        // 以 widget + 行 y 坐标 拼成唯一 key
-        const QByteArray animKey = QByteArrayLiteral("_q_branch_anim_") + QByteArray::number(option->rect.y());
-        const bool isReverse = option->direction == Qt::RightToLeft;
-        const bool isOpen = option->state & State_Open;
-        const qreal closedAngle = 0.0;
-        const qreal openAngle = isReverse ? -90.0 : 90.0;
-
-        QObject *target = const_cast<QWidget *>(widget);
-        int oldState = target->property("_q_branch_state_" + QByteArray::number(option->rect.y())).toInt();
-        int newState = int(option->state);
-        target->setProperty("_q_branch_state_" + QByteArray::number(option->rect.y()), newState);
-
-        if ((oldState & State_Open) != (newState & State_Open))
-        {
-            QNumberStyleAnimation *t = new QNumberStyleAnimation(target);
-            QNumberStyleAnimation *existAnim = qobject_cast<QNumberStyleAnimation *>(getAnimationEx(target, animKey));
-            t->setStartValue(existAnim ? existAnim->currentValue() : (oldState & State_Open ? openAngle : closedAngle));
-            t->setEndValue(isOpen ? openAngle : closedAngle);
-            t->setDuration(120);
-            t->setEasingCurve(QEasingCurve::InOutCubic);
-            startAnimationEx(t, target, animKey);
-        }
-    }
     if (transitionsEnabled() && option->styleObject && (element == PE_IndicatorCheckBox || element == PE_IndicatorRadioButton))
     {
         QObject *styleObject = option->styleObject; // Can be widget or qquickitem
@@ -2364,9 +2339,7 @@ void FluentUI3Style::drawPrimitive(PrimitiveElement element, const QStyleOption 
                 angle = animation->currentValue();
             }
             painter->save();
-            // 使用 rect 中心旋转，但用方形绘制区域以避免旋转后 width/height 互换导致字体位置偏移
-            // 绘制范围限制在分支 rect 内（取宽高最小值的方形）
-            // 向右偏移 4px 以增大与左侧蓝色 indicator 竖条的视觉间距
+            // 向右偏移 4px 以增大与左侧蓝色 indicator 竖条的视间距
             const QPointF c = option->rect.center() + QPointF(isReverse ? -4.0 : 4.0, 0.0);
             painter->translate(c);
             painter->rotate(angle);
@@ -5406,7 +5379,6 @@ void FluentUI3Style::drawControl(ControlElement element, const QStyleOption *opt
                 const bool defaultButton = btn->features.testFlag(QStyleOptionButton::DefaultButton);
                 painter->setBrush(Qt::NoBrush);
                 painter->setPen(defaultButton ? accentColor(option) : winUI3Color(controlStrokePrimary));
-
                 painter->drawRoundedRect(rect, secondLevelRoundingRadius, secondLevelRoundingRadius);
 
                 painter->setPen(defaultButton ? winUI3Color(controlStrokeOnAccentSecondary)
@@ -5896,15 +5868,13 @@ void FluentUI3Style::drawControl(ControlElement element, const QStyleOption *opt
                 const bool isIconMode = widget->property("navigationIconMode").toBool();
                 if ((vopt->state & State_Children) && !isIconMode)
                 {
-                    const bool isReverse = option->direction == Qt::RightToLeft;
                     const bool isOpen = vopt->state & State_Open;
                     QFont f(assetFont);
-                    f.setPointSize(10);
+                    f.setPointSize(11);
                     painter->setFont(f);
                     painter->setPen(vopt->palette.text().color());
 
-                    QRect arrowRect =
-                        rect.adjusted(isReverse ? 6 : rect.width() - 22, 0, isReverse ? -(rect.width() - 22) : -6, 0);
+                    const QRect arrowRect = rect.adjusted(rect.width() - 22, 0, -6, 0);
 
                     const QByteArray animKey = QByteArrayLiteral("_q_nav_branch_anim_") + QByteArray::number(vopt->rect.y());
                     const QNumberStyleAnimation *animation =
@@ -6733,8 +6703,8 @@ void FluentUI3Style::polish(QWidget *widget)
             QNumberStyleAnimation *t = new QNumberStyleAnimation(treeView);
             t->setStartValue(startAngle);
             t->setEndValue(opening ? openAngle : closedAngle);
-            t->setDuration(120);
-            t->setEasingCurve(QEasingCurve::InOutCubic);
+            t->setDuration(200);
+            t->setFrameRate(QStyleAnimation::DefaultFps);
             startAnimationEx(t, treeView, animKey);
         };
 
