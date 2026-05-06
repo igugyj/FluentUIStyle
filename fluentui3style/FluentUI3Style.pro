@@ -4,7 +4,7 @@ TEMPLATE = lib
 CONFIG += shared
 TARGET = FluentUI3Style
 
-#CONFIG += use_qt_style
+CONFIG += use_qt_style
 use_qt_style {
     DEFINES += FLUENT_USE_QT_STYLE
 }

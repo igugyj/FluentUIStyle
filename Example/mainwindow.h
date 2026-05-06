@@ -17,9 +17,10 @@ class QComboBox;
 
 QT_BEGIN_NAMESPACE
 
-namespace Ui {
-class MainWindow;
-}  // namespace Ui
+namespace Ui
+{
+    class MainWindow;
+} // namespace Ui
 
 QT_END_NAMESPACE
 
@@ -34,22 +35,31 @@ class MainWindow : public QMainWindow
     Q_OBJECT
 
 public:
-    MainWindow( QWidget* parent = nullptr );
+    MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
     // QWidget interface
 
 protected:
-    void paintEvent( QPaintEvent* event );
+    void paintEvent(QPaintEvent *event);
     void showEvent(QShowEvent *event);
 
 private slots:
-    void on_checkBox_4_clicked( bool checked );
-    void on_checkBox_5_stateChanged( int arg1 );
+    void on_checkBox_4_clicked(bool checked);
+    void on_checkBox_5_stateChanged(int arg1);
     void on_radioButton_7_clicked();
     void on_radioButton_4_clicked();
     void on_radioButton_5_clicked();
     void on_radioButton_6_clicked();
+
+    void on_rBLightTheme_clicked(bool checked);
+    void on_rBDarkTheme_clicked(bool checked);
+
+    void on_rBWidgtModeNormal_clicked(bool checked);
+    void on_rBWidgetModePixmap_clicked(bool checked);
+
+    void on_rBOnlyIcon_clicked(bool checked);
+    void on_rBIconAndText_clicked(bool checked);
 
 private:
     void initializeFluentBorderWidgets();
@@ -60,32 +70,31 @@ private:
     void initializeMenuAndToolBar();
     void setupTabs();
     void setupButtonsAndIcons();
+    void setupAccentColorWidget();
     void setupMdiArea();
 
     void updateActionIcons();
     void loadChangelog();
-    void resetPalette();
 
     // Menu and Toolbar helpers
-    void addToolBarAction(QToolBar* toolBar, const QString& iconCode, const QString& text, const QKeySequence& shortcut = QKeySequence());
-    void setupToolBarControls(QToolBar* toolBar);
-    void setupThemeSelector(QToolBar* toolBar);
-    void setupColorSchemeSelector(QToolBar* toolBar);
-    void setupStyleSelector(QToolBar* toolBar);
-    void setupWidgetBackgroundSelector(QToolBar* toolBar);
+    void addToolBarAction(QToolBar *toolBar, const QString &iconCode, const QString &text, const QKeySequence &shortcut = QKeySequence());
+    void setupToolBarControls(QToolBar *toolBar);
+    void setupThemeSelector(QToolBar *toolBar);
+    void setupColorSchemeSelector(QToolBar *toolBar);
+    void setupStyleSelector(QToolBar *toolBar);
+    void setupWidgetBackgroundSelector(QToolBar *toolBar);
 
     // Navigation View helpers
     void addTestNavigationTree();
-    void toggleNavigationViewMode();
 
     // Tab setup helpers
-    void setupPivotTabs(QVBoxLayout* mainLayout);
-    void setupSegmentedTabs(QVBoxLayout* mainLayout);
-    void setupPillTabs(QVBoxLayout* mainLayout);
-    void setupCapsuleTabs(QVBoxLayout* mainLayout);
-    void setupNavigationTabs(QVBoxLayout* mainLayout);
-    QWidget* createTabWidgetContainer();
-    void addTabBarSection(QVBoxLayout* layout, const QString& title, const QString& description, int tabStyle, QTabBar** outTabBar = nullptr);
+    void setupPivotTabs(QVBoxLayout *mainLayout);
+    void setupSegmentedTabs(QVBoxLayout *mainLayout);
+    void setupPillTabs(QVBoxLayout *mainLayout);
+    void setupCapsuleTabs(QVBoxLayout *mainLayout);
+    void setupNavigationTabs(QVBoxLayout *mainLayout);
+    QWidget *createTabWidgetContainer();
+    void addTabBarSection(QVBoxLayout *layout, const QString &title, const QString &description, int tabStyle, QTabBar **outTabBar = nullptr);
 
     // Button helpers
     void setupToolButtonWithMenu();
@@ -100,21 +109,25 @@ private:
     void updateNavigationItemIcons();
 
 private:
-    Ui::MainWindow* ui;
+    Ui::MainWindow *ui;
 
-    QMenuBar* m_menuBar { nullptr };
-    QToolBar* m_toolBar { nullptr };
+    QMenuBar *m_menuBar{nullptr};
+    QToolBar *m_toolBar{nullptr};
 
-    ExTabWidget* m_capsuleTabWidget { nullptr };
-    QTabBar* m_segmentedBar { nullptr };
-    QTabBar* m_segmentedFadeBar { nullptr };
-    ExTabWidget* m_navigationTabWidget { nullptr };
-    ExNavTreeWidget* m_navView { nullptr };
-    QAction* m_searchAction { nullptr };
+    ExTabWidget *m_capsuleTabWidget{nullptr};
+    QTabBar *m_segmentedBar{nullptr};
+    QTabBar *m_segmentedFadeBar{nullptr};
+    QTabBar *m_winui3Bar{nullptr};
+    QTabBar *m_winui3IconBar{nullptr};
+    ExTabWidget *m_navigationTabWidget{nullptr};
+    ExNavTreeWidget *m_navView{nullptr};
+    QAction *m_searchAction{nullptr};
 
-    QTabBar* m_tabBarWidgetBg { nullptr };
-    WidgetBgMode m_widgetBgMode { WidgetBgMode::None };
-    QAction* m_navigationToggleAction { nullptr };
+    QTabBar *m_tabBarWidgetBg{nullptr};
+    WidgetBgMode m_widgetBgMode{WidgetBgMode::None};
+    QAction *m_navigationToggleAction{nullptr};
+
+    QComboBox *themeComboBox;
 
 private:
     QPixmap m_bgLight;

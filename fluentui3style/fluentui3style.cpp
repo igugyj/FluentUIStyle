@@ -32,6 +32,7 @@
 #include <QTreeView>
 #include <QMouseEvent>
 #include <QtMath>
+#include <QtGlobal>
 
 #include <array>
 
@@ -64,6 +65,7 @@ static constexpr int contentHMargin = 2 * 3;        // margin between rounded bo
 /// 用于 input 控件作为 delegate editor 时，防止半透明背景透底。
 static QColor resolveOpaque(const QColor &fluentColor, const QColor &base)
 {
+    Q_UNUSED(base)
     return fluentColor;
     // if (fluentColor.alpha() == 255)
     //     return fluentColor;
@@ -97,10 +99,14 @@ enum
 #define Dash12 QChar(0xE629)
 #define CheckMark QChar(0xE73E)
 
-#define CaretLeftSolid8 QChar(0xEDD9)
-#define CaretRightSolid8 QChar(0xEDDA)
-#define CaretUpSolid8 QChar(0xEDDB)
-#define CaretDownSolid8 QChar(0xEDDC)
+// #define CaretLeftSolid8 QChar(0xEDD9)
+// #define CaretRightSolid8 QChar(0xEDDA)
+// #define CaretUpSolid8 QChar(0xEDDB)
+// #define CaretDownSolid8 QChar(0xEDDC)
+#define CaretLeftSolid8 QChar(0xF08D)
+#define CaretRightSolid8 QChar(0xF08F)
+#define CaretUpSolid8 QChar(0xF090)
+#define CaretDownSolid8 QChar(0xF08E)
 
 #define ChevronDown QChar(0xE70D)
 #define ChevronUp QChar(0xE70E)
@@ -1165,12 +1171,6 @@ inline bool isWin11()
 
 inline int getColorSchemeIndex() // 0 = Light, 1 = Dark
 {
-#if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
-    Qt::ColorScheme scheme = qApp->styleHints()->colorScheme();
-    return scheme == Qt::ColorScheme::Light ? 0 : 1;
-#else
-#if 1
-
 #ifdef FLUENT_USE_QT_STYLE
     bool ok = false;
     int colorScheme = qApp->property("_q_colorscheme").toInt(&ok);
@@ -1179,26 +1179,24 @@ inline int getColorSchemeIndex() // 0 = Light, 1 = Dark
         return colorScheme;
     }
     return 0;
-#endif
-    return (int)fluentUIAppearance.theme();
-#else // 直接读取系统设置，兼容性更好，可随系统变化
-#ifdef Q_OS_WIN
-    if (!isWin11())
-    {
-        return 0; // 默认 Light
-    }
-
-    QSettings settings("HKEY_CURRENT_"
-                       "USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Th"
-                       "emes\\Personalize",
-                       QSettings::NativeFormat);
-    int value = settings.value("AppsUseLightTheme", 1).toInt();
-    return value == 1 ? 0 : 1; // 0=Light,1=Dark
 #else
-    return 0; // 其他系统默认 Light
+    return (int)fluentUIAppearance.theme();
 #endif
-#endif
-#endif
+    // #ifdef Q_OS_WIN
+    //     if (!isWin11())
+    //     {
+    //         return 0; // 默认 Light
+    //     }
+
+    //     QSettings settings("HKEY_CURRENT_"
+    //                        "USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Th"
+    //                        "emes\\Personalize",
+    //                        QSettings::NativeFormat);
+    //     int value = settings.value("AppsUseLightTheme", 1).toInt();
+    //     return value == 1 ? 0 : 1; // 0=Light,1=Dark
+    // #else
+    //     return 0; // 其他系统默认 Light
+    // #endif
 }
 
 inline bool isHighContrastTheme()
@@ -1239,10 +1237,6 @@ FluentUI3Style::FluentUI3Style(QStyle *style)
     }
     assetFont.setStyleStrategy(QFont::NoFontMerging);
 
-#if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
-    qDebug() << "System Current colorscheme:" << qApp->styleHints()->colorScheme();
-#endif
-
     highContrastTheme = isHighContrastTheme();
     colorSchemeIndex = getColorSchemeIndex();
 
@@ -1255,10 +1249,6 @@ FluentUI3Style::FluentUI3Style(QStyle *style)
     }
 #endif
     qDebug() << "FluentUI color scheme index:" << colorSchemeIndex;
-
-    auto appPalette = qApp->palette();
-    PaletteManager::instance().applyPalette(appPalette, colorSchemeIndex);
-    qApp->setPalette(appPalette);
 }
 
 FluentUI3Style::~FluentUI3Style()
@@ -1394,7 +1384,7 @@ void FluentUI3Style::drawComplexControl(ComplexControl control,
                 qreal end = (state & State_Sunken) ? 180.0 : 0.0;
                 t->setStartValue(start);
                 t->setEndValue(end);
-                t->setDuration(120);
+                t->setDuration(180);
                 t->setFrameRate(QStyleAnimation::DefaultFps);
                 startAnimation(t);
             }
@@ -1423,7 +1413,7 @@ void FluentUI3Style::drawComplexControl(ComplexControl control,
                 t->setStartValue(start);
                 t->setEndValue(end);
                 t->setFrameRate(QStyleAnimation::DefaultFps);
-                t->setDuration(120);
+                t->setDuration(180);
                 startAnimation(t);
             }
         }
@@ -1446,7 +1436,7 @@ void FluentUI3Style::drawComplexControl(ComplexControl control,
                 sb->rect.size());
             if (cp.needsPainting())
             {
-                [[maybe_unused]] const auto frameRect = QRectF(option->rect).marginsRemoved(QMarginsF(1.5, 1.5, 1.5, 1.5));
+                const auto frameRect = QRectF(option->rect).marginsRemoved(QMarginsF(1.5, 1.5, 1.5, 1.5));
                 if (sb->frame && (sub & SC_SpinBoxFrame))
                 {
                     QStyleOptionFrame panel;
@@ -1740,7 +1730,9 @@ void FluentUI3Style::drawComplexControl(ComplexControl control,
             if (sub & SC_ComboBoxArrow)
             {
                 QRectF arrowRect = proxy()->subControlRect(CC_ComboBox, option, SC_ComboBoxArrow, widget).adjusted(4, 0, -4, 0);
-                painter->setFont(assetFont);
+                static QFont f = assetFont;
+                f.setPixelSize(15);
+                painter->setFont(f);
                 painter->setPen(controlTextColor(option));
                 QNumberStyleAnimation *animation = qobject_cast<QNumberStyleAnimation *>(getAnimation(option->styleObject));
                 qreal angle = 0;
@@ -1753,6 +1745,7 @@ void FluentUI3Style::drawComplexControl(ComplexControl control,
                     angle = animation->currentValue();
                 }
                 painter->save();
+
                 QPointF c = arrowRect.center();
                 painter->translate(c);
                 painter->rotate(angle);
@@ -1776,80 +1769,115 @@ void FluentUI3Style::drawComplexControl(ComplexControl control,
     case CC_ScrollBar:
         if (const QStyleOptionSlider *scrollbar = qstyleoption_cast<const QStyleOptionSlider *>(option))
         {
+            qreal progress = (state & State_MouseOver) ? 1.0 : 0.0;
+            if (transitionsEnabled() && scrollbar->styleObject)
+            {
+                QObject *styleObject = scrollbar->styleObject;
+                State oldState = State(styleObject->property("_q_stylestate").toInt());
+                styleObject->setProperty("_q_stylestate", int(state));
+
+                if ((state & State_MouseOver) != (oldState & State_MouseOver) && (state & State_Enabled))
+                {
+                    QNumberStyleAnimation *t = new QNumberStyleAnimation(styleObject);
+                    t->setStartValue((state & State_MouseOver) ? 0.0 : 1.0);
+                    t->setEndValue((state & State_MouseOver) ? 1.0 : 0.0);
+                    t->setDuration(167);
+                    t->setEasingCurve(QEasingCurve::OutCubic);
+                    startAnimation(t);
+                }
+
+                if (QNumberStyleAnimation *animation = qobject_cast<QNumberStyleAnimation *>(getAnimation(styleObject)))
+                {
+                    progress = animation->currentValue();
+                }
+            }
+
+            int progressInt = qRound(progress * 100);
+
             QCachedPainter cp(painter,
-                              QLatin1String("win11_scrollbar") % HexString<uint8_t>(colorSchemeIndex) % HexString<int>(scrollbar->minimum) % HexString<int>(scrollbar->maximum) % HexString<int>(scrollbar->sliderPosition),
+                              QLatin1String("win11_scrollbar") % HexString<uint8_t>(colorSchemeIndex) % HexString<int>(scrollbar->minimum) % HexString<int>(scrollbar->maximum) % HexString<int>(scrollbar->sliderPosition) % HexString<int>(progressInt),
                               scrollbar,
                               scrollbar->rect.size());
             if (cp.needsPainting())
             {
                 const bool vertical = scrollbar->orientation == Qt::Vertical;
                 const bool horizontal = scrollbar->orientation == Qt::Horizontal;
-                const bool isMouseOver = state & State_MouseOver;
                 const bool isRtl = option->direction == Qt::RightToLeft;
 
-                if (isMouseOver)
+                if (progress > 0.0)
                 {
                     QRectF rect = scrollbar->rect;
                     const QPointF center = rect.center();
                     if (vertical && rect.width() > 24)
                     {
-                        rect.marginsRemoved(QMargins(0, 2, 2, 2));
+                        rect = rect.marginsRemoved(QMarginsF(0, 2, 2, 2));
                         rect.setWidth(rect.width() / 2);
                     }
                     else if (horizontal && rect.height() > 24)
                     {
-                        rect.marginsRemoved(QMargins(2, 0, 2, 2));
+                        rect = rect.marginsRemoved(QMarginsF(2, 0, 2, 2));
                         rect.setHeight(rect.height() / 2);
                     }
                     rect.moveCenter(center);
-                    cp->setBrush(scrollbar->palette.base());
+
+                    QColor baseColor = scrollbar->palette.base().color();
+                    baseColor.setAlphaF(baseColor.alphaF() * progress);
+                    cp->setBrush(baseColor);
                     cp->setPen(Qt::NoPen);
                     cp->drawRoundedRect(rect, topLevelRoundingRadius, topLevelRoundingRadius);
+
                     rect = rect.marginsRemoved(QMarginsF(0.5, 0.5, 0.5, 0.5));
                     cp->setBrush(Qt::NoBrush);
-                    cp->setPen(WINUI3Colors[colorSchemeIndex][frameColorLight]);
+                    QColor frameColor = winUI3Color(frameColorLight);
+                    frameColor.setAlphaF(frameColor.alphaF() * progress);
+                    cp->setPen(frameColor);
                     cp->drawRoundedRect(rect, topLevelRoundingRadius + 0.5, topLevelRoundingRadius + 0.5);
                 }
                 if (sub & SC_ScrollBarSlider)
                 {
                     QRectF rect = proxy()->subControlRect(CC_ScrollBar, option, SC_ScrollBarSlider, widget);
                     const QPointF center = rect.center();
+                    const qreal _width = 2.5;
                     if (vertical)
                     {
-                        rect.setWidth(isMouseOver ? rect.width() / 2 : 3);
+                        rect.setWidth(_width + (rect.width() / 2 - _width) * progress);
                     }
                     else
                     {
-                        rect.setHeight(isMouseOver ? rect.height() / 2 : 3);
+                        rect.setHeight(_width + (rect.height() / 2 - _width) * progress);
                     }
                     rect.moveCenter(center);
                     cp->setBrush(Qt::gray);
                     cp->setPen(Qt::NoPen);
-                    cp->drawRoundedRect(
-                        rect, isMouseOver ? secondLevelRoundingRadius : 1.5, isMouseOver ? secondLevelRoundingRadius : 1.5);
+                    qreal cornerRadius = _width / 2 + (secondLevelRoundingRadius - _width / 2) * progress;
+                    cp->drawRoundedRect(rect, cornerRadius, cornerRadius);
                 }
                 if (sub & SC_ScrollBarAddLine)
                 {
-                    if (isMouseOver)
+                    if (progress > 0.0)
                     {
                         const QRectF rect = proxy()->subControlRect(CC_ScrollBar, option, SC_ScrollBarAddLine, widget);
                         QFont f = QFont(assetFont);
                         f.setPointSize(6);
                         cp->setFont(f);
-                        cp->setPen(Qt::gray);
+                        QColor penColor = Qt::gray;
+                        penColor.setAlphaF(penColor.alphaF() * progress);
+                        cp->setPen(penColor);
                         const auto str = vertical ? CaretDownSolid8 : (isRtl ? CaretLeftSolid8 : CaretRightSolid8);
                         cp->drawText(rect, Qt::AlignCenter, str);
                     }
                 }
                 if (sub & SC_ScrollBarSubLine)
                 {
-                    if (isMouseOver)
+                    if (progress > 0.0)
                     {
                         const QRectF rect = proxy()->subControlRect(CC_ScrollBar, option, SC_ScrollBarSubLine, widget);
                         QFont f = QFont(assetFont);
                         f.setPointSize(6);
                         cp->setFont(f);
-                        cp->setPen(Qt::gray);
+                        QColor penColor = Qt::gray;
+                        penColor.setAlphaF(penColor.alphaF() * progress);
+                        cp->setPen(penColor);
                         const auto str = vertical ? CaretUpSolid8 : (isRtl ? CaretRightSolid8 : CaretLeftSolid8);
                         cp->drawText(rect, Qt::AlignCenter, str);
                     }
@@ -2070,7 +2098,8 @@ void FluentUI3Style::drawComplexControl(ComplexControl control,
             {
                 QRect arrowRect = menuarea;
 
-                QFont font(assetFont);
+                static QFont font(assetFont);
+                font.setPixelSize(12);
                 painter->setFont(font);
                 painter->setPen(controlTextColor(option));
 
@@ -2328,7 +2357,7 @@ void FluentUI3Style::drawPrimitive(PrimitiveElement element, const QStyleOption 
             const bool isReverse = option->direction == Qt::RightToLeft;
             const bool isOpen = option->state & QStyle::State_Open;
             QFont f(assetFont);
-            f.setPointSize(10);
+            f.setPointSize(11);
             painter->setFont(f);
             painter->setPen(option->palette.color(isOpen ? QPalette::Active : QPalette::Disabled, QPalette::WindowText));
             // 用每行唯一的 key 读取动画值，避免节点间动画状态共享
@@ -2342,7 +2371,7 @@ void FluentUI3Style::drawPrimitive(PrimitiveElement element, const QStyleOption 
                 angle = animation->currentValue();
             }
             painter->save();
-            // 向右偏移 4px 以增大与左侧蓝色 indicator 竖条的视间距
+            // 向右偏移 4px 以增大与左侧蓝色 indicator 竖条的间距
             const QPointF c = option->rect.center() + QPointF(isReverse ? -4.0 : 4.0, 0.0);
             painter->translate(c);
             painter->rotate(angle);
@@ -2424,6 +2453,12 @@ void FluentUI3Style::drawPrimitive(PrimitiveElement element, const QStyleOption 
             {
                 painter->setBrush(winUI3Color(subtleHighlightColor));
             }
+
+            if (auto btn = qobject_cast<const QAbstractButton *>(widget); btn->isChecked())
+            {
+                painter->setBrush(winUI3Color(subtlePressedColor));
+            }
+
             painter->drawRoundedRect(rect, secondLevelRoundingRadius, secondLevelRoundingRadius);
             return;
         }
@@ -2650,11 +2685,12 @@ void FluentUI3Style::drawPrimitive(PrimitiveElement element, const QStyleOption 
                 // 普通 QTreeView：只画蓝色 indicator 竖条，背景由 CE_ItemViewItem 负责
                 drawTreeViewIndicator(vopt, painter, widget);
             }
-            else if (isNonTableHighlight)
+
+            if (isNonTableHighlight)
             {
                 bool isDecorationColumn = false;
 #if QT_VERSION >= QT_VERSION_CHECK(6, 9, 0)
-                isDecorationColumn = vopt->features.testFlag(QStyleOptionViewItem::IsDecoratedRootColumn);
+                isDecorationColumn = vopt->features.testAnyFlags(QStyleOptionViewItem::IsDecorationForRootColumn);
 #else
                 if (qobject_cast<const QTreeView *>(widget))
                 {
@@ -3345,6 +3381,10 @@ void FluentUI3Style::drawTabBarTabShape(const QStyleOption *option, QPainter *pa
         {
             drawSegmentedFadeTab(tab, painter, widget);
         }
+        else if (tabBarStyle == TabBarStyle::Segmented_WinUI3)
+        {
+            drawSegmentedWinUI3Tab(tab, painter, widget);
+        }
         else if (tabBarStyle == TabBarStyle::Navigation)
         {
             drawNavigationTab(tab, painter, widget);
@@ -3449,7 +3489,6 @@ void FluentUI3Style::drawPivotGrowingTab(const QStyleOptionTab *tab, QPainter *p
         t->setStartValue(0.0);
         t->setEndValue(1.0);
         t->setDuration(300);
-        t->setEasingCurve(QEasingCurve::Linear);
         startAnimationEx(t, styleObject, animKey);
     }
 
@@ -3996,7 +4035,8 @@ void FluentUI3Style::drawSegmentedSlideTab(const QStyleOptionTab *tab, QPainter 
     };
 
     const bool isSelected = tab->state.testFlag(QStyle::State_Selected);
-    const bool isHover = tab->state.testFlag(QStyle::State_MouseOver) && !isSelected;
+    const bool isPressed = tab->state.testFlag(QStyle::State_Sunken) && !isSelected;
+    const bool isHover = tab->state.testFlag(QStyle::State_MouseOver) && !isSelected && !isPressed;
     const bool isFirstSegment = tab->position == QStyleOptionTab::Beginning || tab->position == QStyleOptionTab::OnlyOneTab;
     const bool isLastSegment = tab->position == QStyleOptionTab::End || tab->position == QStyleOptionTab::OnlyOneTab;
     constexpr int selectionOuterMarginH = 4;
@@ -4020,21 +4060,26 @@ void FluentUI3Style::drawSegmentedSlideTab(const QStyleOptionTab *tab, QPainter 
 
     const int leftInset = isFirstSegment ? selectionOuterMarginH : selectionInnerSpacingH / 2;
     const int rightInset = isLastSegment ? selectionOuterMarginH : selectionInnerSpacingH / 2;
-    const QRect adjustedTabRect = tab->rect.adjusted(leftInset, selectionMarginV, -rightInset, -selectionMarginV);
+    const QRectF adjustedTabRect = QRectF(tab->rect).adjusted(leftInset, selectionMarginV, -rightInset, -selectionMarginV);
 
     if (isLastSegment)
     {
         beginRect = styleObject->property("BeginRect").toRect();
-        QRect fullRect = beginRect.united(tab->rect).adjusted(1, 1, -1, -1);
-
-        painter->setPen(QPen(winUI3Color(frameColorStrongDisabled), 1));
+        const QRectF fullRect = QRectF(beginRect.united(tab->rect)).adjusted(0.5, 0.5, -0.5, -0.5);
+        painter->setPen(QPen(highContrastTheme ? tab->palette.buttonText().color() : winUI3Color(controlStrokePrimary), 1));
+        painter->setBrush(highContrastTheme ? tab->palette.button() : winUI3Color(fillControlAltSecondary));
         painter->drawRoundedRect(fullRect, secondLevelRoundingRadius, secondLevelRoundingRadius);
     }
 
     painter->setPen(Qt::NoPen);
-    if (isHover)
+    if (isPressed)
     {
-        painter->setBrush(winUI3Color(tabBarHoverBackground));
+        painter->setBrush(winUI3Color(subtlePressedColor));
+        painter->drawRoundedRect(adjustedTabRect, secondLevelRoundingRadius, secondLevelRoundingRadius);
+    }
+    else if (isHover)
+    {
+        painter->setBrush(winUI3Color(subtleHighlightColor));
         painter->drawRoundedRect(adjustedTabRect, secondLevelRoundingRadius, secondLevelRoundingRadius);
     }
 
@@ -4094,20 +4139,14 @@ void FluentUI3Style::drawSegmentedSlideTab(const QStyleOptionTab *tab, QPainter 
     }
 
     const qreal progress = clamp01(animationValue(styleObject, animKey, 1.0f));
-    const QRectF drawRect = lerpRect(QRectF(previousRect), QRectF(currentRect), progress);
-    const bool isAnimating = progress < 0.999;
-
+    QRectF drawRect = lerpRect(QRectF(previousRect), QRectF(currentRect), progress);
     styleObject->setProperty("_q_segmented_selected_tab_index", currentTabIndex);
     styleObject->setProperty("_q_segmented_previous_selected_rect", previousRect);
     styleObject->setProperty("_q_segmented_current_selected_rect", currentRect);
 
-    QColor selectedBrush = winUI3Color(tabBarSelectedBackground);
-    if (isAnimating)
-    {
-        selectedBrush.setAlpha(qRound(selectedBrush.alpha() * 0.35));
-    }
-
+    const QColor selectedBrush = highContrastTheme ? tab->palette.highlight().color() : winUI3Color(tabBarSelectedBackground);
     painter->setBrush(selectedBrush);
+    drawRect.adjust(0.5, 0.5, -0.5, -0.5);
     painter->drawRoundedRect(drawRect, secondLevelRoundingRadius, secondLevelRoundingRadius);
 #else
     Q_UNUSED(tab)
@@ -4134,7 +4173,8 @@ void FluentUI3Style::drawSegmentedFadeTab(const QStyleOptionTab *tab, QPainter *
     { return qBound(0.0, value, 1.0); };
 
     const bool isSelected = tab->state.testFlag(QStyle::State_Selected);
-    const bool isHover = tab->state.testFlag(QStyle::State_MouseOver) && !isSelected;
+    const bool isPressed = tab->state.testFlag(QStyle::State_Sunken) && !isSelected;
+    const bool isHover = tab->state.testFlag(QStyle::State_MouseOver) && !isSelected && !isPressed;
     const bool isFirstSegment = tab->position == QStyleOptionTab::Beginning || tab->position == QStyleOptionTab::OnlyOneTab;
     const bool isLastSegment = tab->position == QStyleOptionTab::End || tab->position == QStyleOptionTab::OnlyOneTab;
     constexpr int selectionOuterMarginH = 4;
@@ -4158,21 +4198,26 @@ void FluentUI3Style::drawSegmentedFadeTab(const QStyleOptionTab *tab, QPainter *
 
     const int leftInset = isFirstSegment ? selectionOuterMarginH : selectionInnerSpacingH / 2;
     const int rightInset = isLastSegment ? selectionOuterMarginH : selectionInnerSpacingH / 2;
-    const QRect adjustedTabRect = tab->rect.adjusted(leftInset, selectionMarginV, -rightInset, -selectionMarginV);
+    const QRectF adjustedTabRect = QRectF(tab->rect).adjusted(leftInset, selectionMarginV, -rightInset, -selectionMarginV);
 
     if (isLastSegment)
     {
         beginRect = styleObject->property("BeginRect").toRect();
-        QRect fullRect = beginRect.united(tab->rect).adjusted(1, 1, -1, -1);
-
-        painter->setPen(QPen(winUI3Color(frameColorStrongDisabled), 1));
+        const QRectF fullRect = QRectF(beginRect.united(tab->rect)).adjusted(0.5, 0.5, -0.5, -0.5);
+        painter->setPen(QPen(highContrastTheme ? tab->palette.buttonText().color() : winUI3Color(controlStrokePrimary), 1));
+        painter->setBrush(highContrastTheme ? tab->palette.button() : winUI3Color(fillControlAltSecondary));
         painter->drawRoundedRect(fullRect, secondLevelRoundingRadius, secondLevelRoundingRadius);
     }
 
     painter->setPen(Qt::NoPen);
-    if (isHover)
+    if (isPressed)
     {
-        painter->setBrush(winUI3Color(tabBarHoverBackground));
+        painter->setBrush(winUI3Color(subtlePressedColor));
+        painter->drawRoundedRect(adjustedTabRect, secondLevelRoundingRadius, secondLevelRoundingRadius);
+    }
+    else if (isHover)
+    {
+        painter->setBrush(winUI3Color(subtleHighlightColor));
         painter->drawRoundedRect(adjustedTabRect, secondLevelRoundingRadius, secondLevelRoundingRadius);
     }
 
@@ -4229,7 +4274,7 @@ void FluentUI3Style::drawSegmentedFadeTab(const QStyleOptionTab *tab, QPainter *
         return;
     }
 
-    QColor selectedBrush = winUI3Color(tabBarSelectedBackground);
+    const QColor selectedBrush = highContrastTheme ? tab->palette.highlight().color() : winUI3Color(tabBarSelectedBackground);
     styleObject->setProperty("_q_segmented_fade_selected_tab_index", selectedTabIndex);
     if (!isFadingBetweenTabs)
     {
@@ -4243,6 +4288,169 @@ void FluentUI3Style::drawSegmentedFadeTab(const QStyleOptionTab *tab, QPainter *
     painter->setOpacity(opacity);
     painter->setBrush(selectedBrush);
     painter->drawRoundedRect(adjustedTabRect, secondLevelRoundingRadius, secondLevelRoundingRadius);
+#else
+    Q_UNUSED(tab)
+    Q_UNUSED(painter)
+    Q_UNUSED(widget)
+#endif
+}
+
+void FluentUI3Style::drawSegmentedWinUI3Tab(const QStyleOptionTab *tab, QPainter *painter, const QWidget *widget) const
+{
+#if QT_CONFIG(tabbar)
+    if (!tab || !painter)
+        return;
+
+    QObject *styleObject = tab->styleObject;
+    if (!styleObject)
+        return;
+
+    const auto clamp01 = [](qreal value)
+    { return qBound(0.0, value, 1.0); };
+
+    const bool isSelected = tab->state.testFlag(QStyle::State_Selected);
+    const bool isHover = tab->state.testFlag(QStyle::State_MouseOver);
+    const bool isFirstSegment = tab->position == QStyleOptionTab::Beginning || tab->position == QStyleOptionTab::OnlyOneTab;
+    const bool isLastSegment = tab->position == QStyleOptionTab::End || tab->position == QStyleOptionTab::OnlyOneTab;
+    constexpr int selectionOuterMarginH = 0;
+    constexpr int selectionInnerSpacingH = 0;
+    constexpr int selectionMarginV = 0;
+
+    PainterStateGuard guard(painter);
+    painter->setRenderHint(QPainter::Antialiasing, true);
+
+    auto beginRect = styleObject->property("BeginRect").toRect();
+    if (isFirstSegment && beginRect != tab->rect)
+        styleObject->setProperty("BeginRect", tab->rect);
+
+    auto endRect = styleObject->property("EndRect").toRect();
+    if (isLastSegment && endRect != tab->rect)
+        styleObject->setProperty("EndRect", tab->rect);
+
+    if (isLastSegment)
+    {
+        beginRect = styleObject->property("BeginRect").toRect();
+        const QRectF fullRect = QRectF(beginRect.united(tab->rect)).adjusted(0.5, 0.5, -0.5, -0.5);
+        painter->setPen(QPen(highContrastTheme ? tab->palette.buttonText().color() : winUI3Color(controlStrokePrimary), 1));
+        painter->setBrush(highContrastTheme ? tab->palette.button() : winUI3Color(fillControlAltSecondary));
+        painter->drawRoundedRect(fullRect, secondLevelRoundingRadius, secondLevelRoundingRadius);
+    }
+
+    const QTabBar *tabBar = qobject_cast<const QTabBar *>(widget);
+    int tabIndex = tabBar->tabAt(tab->rect.center());
+    if (tabIndex < 0)
+        return;
+
+    const int currentTabIndex = tabBar->currentIndex();
+    QVariant activeTabIndexVar = styleObject->property("_q_segmented_winui3_curr_sel");
+    int activeTabIndex = activeTabIndexVar.isValid() ? activeTabIndexVar.toInt() : -1;
+
+    QVariant previousTabIndexVar = styleObject->property("_q_segmented_winui3_prev_sel");
+    int previousTabIndex = previousTabIndexVar.isValid() ? previousTabIndexVar.toInt() : -1;
+
+    if (activeTabIndex < 0)
+    {
+        activeTabIndex = currentTabIndex;
+        styleObject->setProperty("_q_segmented_winui3_curr_sel", activeTabIndex);
+    }
+
+    if (currentTabIndex != activeTabIndex)
+    {
+        previousTabIndex = activeTabIndex;
+        activeTabIndex = currentTabIndex;
+        styleObject->setProperty("_q_segmented_winui3_prev_sel", previousTabIndex);
+        styleObject->setProperty("_q_segmented_winui3_curr_sel", activeTabIndex);
+
+        QNumberStyleAnimation *t = new QNumberStyleAnimation(styleObject);
+        t->setStartValue(0.0);
+        t->setEndValue(1.0);
+        t->setDuration(120);
+        t->setEasingCurve(QEasingCurve::OutCubic);
+        startAnimationEx(t, styleObject, "_q_segmented_winui3_sel_anim");
+    }
+
+    QVariant currentPressedIndexVar = styleObject->property("_q_segmented_winui3_pressed_index");
+    int currentPressedIndex = currentPressedIndexVar.isValid() ? currentPressedIndexVar.toInt() : -1;
+
+    QVariant activePressedIndexVar = styleObject->property("_q_segmented_winui3_curr_press");
+    int activePressedIndex = activePressedIndexVar.isValid() ? activePressedIndexVar.toInt() : -1;
+
+    QVariant previousPressedIndexVar = styleObject->property("_q_segmented_winui3_prev_press");
+    int previousPressedIndex = previousPressedIndexVar.isValid() ? previousPressedIndexVar.toInt() : -1;
+
+    if (currentPressedIndex != activePressedIndex)
+    {
+        previousPressedIndex = activePressedIndex;
+        activePressedIndex = currentPressedIndex;
+        styleObject->setProperty("_q_segmented_winui3_prev_press", previousPressedIndex);
+        styleObject->setProperty("_q_segmented_winui3_curr_press", activePressedIndex);
+
+        QNumberStyleAnimation *t = new QNumberStyleAnimation(styleObject);
+        t->setStartValue(0.0);
+        t->setEndValue(1.0);
+        t->setDuration(120);
+        t->setEasingCurve(QEasingCurve::OutCubic);
+        startAnimationEx(t, styleObject, "_q_segmented_winui3_press_anim");
+    }
+
+    qreal selAnimProgress = clamp01(animationValue(styleObject, "_q_segmented_winui3_sel_anim", 1.0f));
+    qreal pressAnimProgress = clamp01(animationValue(styleObject, "_q_segmented_winui3_press_anim", 1.0f));
+
+    qreal selectProgress = 0.0;
+    if (tabIndex == activeTabIndex)
+        selectProgress = selAnimProgress;
+    else if (tabIndex == previousTabIndex)
+        selectProgress = 1.0 - selAnimProgress;
+
+    qreal pressProgress = 0.0;
+    if (tabIndex == activePressedIndex)
+        pressProgress = pressAnimProgress;
+    else if (tabIndex == previousPressedIndex)
+        pressProgress = 1.0 - pressAnimProgress;
+
+    const bool isPressedReal = (tabIndex == currentPressedIndex);
+
+    const int leftInset = isFirstSegment ? selectionOuterMarginH : selectionInnerSpacingH / 2;
+    const int rightInset = isLastSegment ? selectionOuterMarginH : selectionInnerSpacingH / 2;
+    QRectF adjustedTabRect = QRectF(tab->rect).adjusted(leftInset, selectionMarginV, -rightInset, -selectionMarginV);
+
+    if (!isSelected)
+    {
+        if (isHover || isPressedReal)
+        {
+            painter->setPen(Qt::NoPen);
+            painter->setBrush(isPressedReal ? winUI3Color(subtlePressedColor) : winUI3Color(subtleHighlightColor));
+
+            QRectF hoverRect = adjustedTabRect.marginsRemoved(QMarginsF(3, 3, 3, 3));
+            painter->drawRoundedRect(hoverRect, secondLevelRoundingRadius, secondLevelRoundingRadius);
+        }
+    }
+
+    if (selectProgress > 0.0 || isSelected)
+    {
+        if (isSelected)
+        {
+            const QColor selectedBrush = highContrastTheme ? tab->palette.highlight().color() : winUI3Color(fillControlDefault);
+            painter->setBrush(selectedBrush);
+            painter->setPen(QPen(highContrastTheme ? tab->palette.buttonText().color() : winUI3Color(frameColorLight), 1));
+
+            QRectF drawRect = adjustedTabRect;
+            drawRect.adjust(0.5, 0.5, -0.5, -0.5);
+            painter->drawRoundedRect(drawRect, secondLevelRoundingRadius, secondLevelRoundingRadius);
+        }
+
+        qreal targetIndicatorWidth = 16.0;
+        qreal currentIndicatorWidth = targetIndicatorWidth * selectProgress * (1.0 - 0.5 * pressProgress);
+
+        if (currentIndicatorWidth > 0.5)
+        {
+            QRectF indicatorRect = QRectF(adjustedTabRect.x() + (adjustedTabRect.width() / 2.0 - currentIndicatorWidth / 2.0), adjustedTabRect.bottom() - 3.5, currentIndicatorWidth, 2);
+            painter->setPen(calculateAccentColor(tab));
+            painter->setBrush(calculateAccentColor(tab));
+            painter->drawRoundedRect(indicatorRect, 1, 1);
+        }
+    }
+
 #else
     Q_UNUSED(tab)
     Q_UNUSED(painter)
@@ -4378,7 +4586,7 @@ void FluentUI3Style::drawListViewIndicator(const QStyleOptionViewItem *option, Q
         QNumberStyleAnimation *t = new QNumberStyleAnimation(stateObject);
         t->setStartValue(0.0);
         t->setEndValue(1.0);
-        t->setDuration(100);
+        t->setDuration(120);
         startAnimationEx(t, stateObject, animKey);
     }
 
@@ -4406,7 +4614,7 @@ void FluentUI3Style::drawNavigationViewIndicator(const QStyleOptionViewItem *opt
     }
 
     const QTreeView *treeView = qobject_cast<const QTreeView *>(widget);
-    if (!treeView || qobject_cast<const QTableView *>(widget))
+    if (!treeView)
     {
         return;
     }
@@ -4419,50 +4627,6 @@ void FluentUI3Style::drawNavigationViewIndicator(const QStyleOptionViewItem *opt
     {
         const qreal clamped = clamp01(t);
         return clamped * clamped * (3.0 - 2.0 * clamped);
-    };
-    const auto easeOutCubic = [&](qreal t)
-    {
-        const qreal clamped = clamp01(t);
-        const qreal inv = 1.0 - clamped;
-        return 1.0 - inv * inv * inv;
-    };
-    const auto easeOutBack = [&](qreal t)
-    {
-        const qreal clamped = clamp01(t);
-        const qreal x = clamped - 1.0;
-        constexpr qreal s = 1.15;
-        return 1.0 + (s + 1.0) * x * x * x + s * x * x;
-    };
-    const auto delayedProgress = [&](qreal t, qreal delayPortion)
-    {
-        const qreal clamped = clamp01(t);
-        if (clamped <= delayPortion)
-        {
-            return 0.0;
-        }
-
-        return clamp01((clamped - delayPortion) / (1.0 - delayPortion));
-    };
-    const auto releaseProgress = [&](qreal t, qreal delayPortion)
-    {
-        const qreal delayed = delayedProgress(t, delayPortion);
-        if (delayed <= 0.0)
-        {
-            return 0.0;
-        }
-
-        return easeOutCubic(delayed * delayed);
-    };
-    const auto settleProgress = [&](qreal t, qreal delayPortion)
-    {
-        const qreal delayed = delayedProgress(t, delayPortion);
-        if (delayed <= 0.0)
-        {
-            return 0.0;
-        }
-
-        const qreal shaped = delayed * delayed * delayed;
-        return smoothStep(shaped);
     };
 
     const QRect rect = option->rect;
@@ -4492,14 +4656,57 @@ void FluentUI3Style::drawNavigationViewIndicator(const QStyleOptionViewItem *opt
 
     if (toH <= 0.0)
     {
-        fromX = targetX;
-        fromTop = targetTop;
-        fromH = targetH;
-        toX = targetX;
-        toTop = targetTop;
-        toH = targetH;
-        fromIndex = option->index;
-        toIndex = option->index;
+        QModelIndex seedIndex;
+        if (treeView->selectionModel() && treeView->selectionModel()->hasSelection())
+        {
+            const auto sel = treeView->selectionModel()->selectedIndexes();
+            if (!sel.isEmpty())
+                seedIndex = sel.first();
+        }
+        if (!seedIndex.isValid())
+            seedIndex = treeView->currentIndex();
+
+        if (!seedIndex.isValid())
+            return;
+
+        const QRect seedVr = treeView->visualRect(seedIndex);
+        if (seedVr.width() > 0 && seedVr.height() > 0)
+        {
+            const bool seedIsRtl = option->direction == Qt::RightToLeft;
+            const qreal seedTargetX = seedIsRtl ? seedVr.right() - 4.5f : seedVr.left() + 3.5f;
+            const qreal seedNormalInset = seedVr.height() / 3.5f;
+            const qreal seedTargetTop = seedVr.top() + seedNormalInset;
+            const qreal seedTargetH = seedVr.height() - seedNormalInset * 2.0;
+
+            fromX = seedTargetX;
+            fromTop = seedTargetTop;
+            fromH = seedTargetH;
+            toX = seedTargetX;
+            toTop = seedTargetTop;
+            toH = seedTargetH;
+            fromIndex = seedIndex;
+            toIndex = seedIndex;
+        }
+        else
+        {
+            // 如果选中项不在 viewport 中，visualRect 可能为空。
+            // 只有当当前正在绘制选中行时，才用 option->rect 初始化。
+            if (seedIndex == option->index && (option->state & State_Selected))
+            {
+                fromX = targetX;
+                fromTop = targetTop;
+                fromH = targetH;
+                toX = targetX;
+                toTop = targetTop;
+                toH = targetH;
+                fromIndex = seedIndex;
+                toIndex = seedIndex;
+            }
+            else
+            {
+                return;
+            }
+        }
     }
 
     if (option->state & State_Selected)
@@ -4779,6 +4986,34 @@ void FluentUI3Style::drawTabBarTabLabel(const QStyleOption *option, QPainter *pa
             {
                 tr = proxy()->subElementRect(SE_TabBarTabText, option, widget);
             }
+        }
+
+        const bool isSegmentedWinUI3 = widget && widget->property(TabBarStyleProperty).toInt() == TabBarStyle::Segmented_WinUI3;
+        if (isSegmentedWinUI3)
+        {
+            int iconWidth = 0;
+            int spacing = 0;
+            if (!tab->icon.isNull())
+            {
+                iconWidth = tab->iconSize.width();
+                if (!tab->text.isEmpty())
+                {
+                    spacing = 6;
+                }
+            }
+            int textWidth = tab->fontMetrics.horizontalAdvance(tab->text);
+            int totalWidth = iconWidth + spacing + textWidth;
+            int startX = tab->rect.left() + (tab->rect.width() - totalWidth) / 2;
+            if (!tab->icon.isNull())
+            {
+                iconRect = QRect(startX, tab->rect.center().y() - tab->iconSize.height() / 2, iconWidth, tab->iconSize.height());
+                tr = QRect(iconRect.right() + spacing, tab->rect.top(), textWidth, tab->rect.height());
+            }
+            else
+            {
+                tr = QRect(startX, tab->rect.top(), textWidth, tab->rect.height());
+            }
+            alignment = Qt::AlignCenter | Qt::TextShowMnemonic;
         }
 
         if (!tab->icon.isNull())
@@ -5361,17 +5596,10 @@ void FluentUI3Style::drawControl(ControlElement element, const QStyleOption *opt
             else
             {
                 bool accent = widget && widget->property("accent").toBool();
-
-                // ── 状态分类，用于判断是否需要触发淡入淡出动画 ──
-                // 将当前 hover/pressed/checked 状态编码为整数，便于比较
-                const bool isCurrentHover = flags & State_MouseOver;
-                const bool isCurrentPressed = flags & (State_Sunken | State_On);
                 const bool isCurrentChecked = checkable && checked;
                 const int currentBtnState = option->state;
 
                 QObject *styleObject = option->styleObject;
-
-                // 计算当前目标背景颜色（目标状态对应的"to"色）
                 QColor targetBgColor;
                 if (accent)
                 {
@@ -5393,11 +5621,9 @@ void FluentUI3Style::drawControl(ControlElement element, const QStyleOption *opt
                     const int oldBtnState = styleObject->property("_q_btn_state").toInt();
                     if (oldBtnState != currentBtnState)
                     {
-                        // 状态发生变化：把当前实际渲染颜色（含动画进度）存为 from-color
                         QColor fromColor;
                         if (QNumberStyleAnimation *prevAnim = qobject_cast<QNumberStyleAnimation *>(getAnimation(styleObject)))
                         {
-                            // 若上一个动画还未完成，以当前插值色作为 from-color（支持中断过渡）
                             const QColor prevFromColor = styleObject->property("_q_btn_from_color").value<QColor>();
                             const QColor prevTargetColor = styleObject->property("_q_btn_target_color").value<QColor>();
                             if (prevFromColor.isValid() && prevTargetColor.isValid())
@@ -5411,7 +5637,6 @@ void FluentUI3Style::drawControl(ControlElement element, const QStyleOption *opt
                         }
                         else
                         {
-                            // 上一动画已结束，from-color 就是当前目标色（静止状态色）
                             fromColor = styleObject->property("_q_btn_from_color").value<QColor>();
                             if (!fromColor.isValid())
                             {
@@ -5431,7 +5656,6 @@ void FluentUI3Style::drawControl(ControlElement element, const QStyleOption *opt
                         startAnimation(t);
                     }
 
-                    // 读取进度，做颜色插值
                     if (QNumberStyleAnimation *anim = qobject_cast<QNumberStyleAnimation *>(getAnimation(styleObject)))
                     {
                         const qreal progress = anim->currentValue();
@@ -5443,14 +5667,12 @@ void FluentUI3Style::drawControl(ControlElement element, const QStyleOption *opt
                     }
                     else
                     {
-                        // 无动画时，记录静止颜色供下次动画使用
                         styleObject->setProperty("_q_btn_from_color", targetBgColor);
                         styleObject->setProperty("_q_btn_target_color", targetBgColor);
                     }
                 }
 
                 painter->setBrush(bgColor);
-
                 painter->drawRoundedRect(rect, secondLevelRoundingRadius, secondLevelRoundingRadius);
 
                 rect.adjust(0.5, 0.5, -0.5, -0.5);
@@ -5802,8 +6024,21 @@ void FluentUI3Style::drawControl(ControlElement element, const QStyleOption *opt
             QRect checkRect = p->subElementRect(SE_ItemViewItemCheckIndicator, vopt, widget);
             QRect iconRect = p->subElementRect(SE_ItemViewItemDecoration, vopt, widget);
             QRect textRect = p->subElementRect(SE_ItemViewItemText, vopt, widget);
+            const QTreeView *itemTreeView = qobject_cast<const QTreeView *>(widget);
+            if (!itemTreeView && widget)
+            {
+                const QWidget *pwidget = widget->parentWidget();
+                while (pwidget && !itemTreeView)
+                {
+                    itemTreeView = qobject_cast<const QTreeView *>(pwidget);
+                    pwidget = pwidget->parentWidget();
+                }
+            }
             const bool isNavigationTreeView =
-                qobject_cast<const QTreeView *>(widget) && widget->property(NavigationViewStyleProperty).toBool();
+                itemTreeView &&
+                (widget->property(NavigationViewStyleProperty).toBool() ||
+                 itemTreeView->property(NavigationViewStyleProperty).toBool() ||
+                 (itemTreeView->viewport() && itemTreeView->viewport()->property(NavigationViewStyleProperty).toBool()));
 
             if (isNavigationTreeView && (vopt->state & State_Children))
             {
@@ -5940,15 +6175,20 @@ void FluentUI3Style::drawControl(ControlElement element, const QStyleOption *opt
             painter->setPen(highlightCurrent && highContrastTheme ? vopt->palette.base().color() : vopt->palette.text().color());
             viewItemDrawText(painter, vopt, textRect);
 
-            drawListViewIndicator(vopt, painter, widget);
+            if (!isNavigationTreeView)
+            {
+                drawListViewIndicator(vopt, painter, widget);
+            }
             if (isNavigationTreeView)
             {
-                const bool isIconMode = widget->property("navigationIconMode").toBool();
+                const bool isIconMode =
+                    (widget && widget->property("navigationIconMode").toBool()) ||
+                    (itemTreeView && itemTreeView->property("navigationIconMode").toBool());
                 if ((vopt->state & State_Children) && !isIconMode)
                 {
                     const bool isOpen = vopt->state & State_Open;
-                    QFont f(assetFont);
-                    f.setPointSize(11);
+                    static QFont f = assetFont;
+                    f.setPixelSize(15);
                     painter->setFont(f);
                     painter->setPen(vopt->palette.text().color());
 
@@ -5965,10 +6205,11 @@ void FluentUI3Style::drawControl(ControlElement element, const QStyleOption *opt
 
                     PainterStateGuard arrowGuard(painter);
                     QRectF arrowRectF(arrowRect);
+
                     const QPointF center = arrowRectF.center();
                     painter->translate(center);
                     painter->rotate(angle);
-                    QRect r(-arrowRect.width() / 2, -arrowRect.height() / 2, arrowRect.width(), arrowRect.height());
+                    QRectF r(-arrowRectF.width() / 2.0, -arrowRectF.height() / 2.0, arrowRectF.width(), arrowRectF.height());
                     painter->drawText(r, Qt::AlignCenter, ChevronDownMed);
                 }
                 drawNavigationViewIndicator(vopt, painter, widget);
@@ -6059,6 +6300,8 @@ void FluentUI3Style::drawControl(ControlElement element, const QStyleOption *opt
                              QPalette::WindowText);
             }
         }
+        break;
+    case CE_ToolBar:
         break;
     default:
         QProxyStyle::drawControl(element, option, painter, widget);
@@ -6361,7 +6604,7 @@ QSize FluentUI3Style::sizeFromContents(ContentsType type, const QStyleOption *op
 
         // FluentUI 3 列表项标准常量
         const int FLUENT_H_MARGIN = 12;    // 水平边距（左右各12px）
-        const int FLUENT_ITEM_HEIGHT = 40; // 常规列表项总高度
+        const int FLUENT_ITEM_HEIGHT = 38; // 常规列表项总高度
         if (const auto *viewItemOpt = qstyleoption_cast<const QStyleOptionViewItem *>(option))
         {
             if (const QListView *lv = qobject_cast<const QListView *>(widget); lv && lv->viewMode() != QListView::IconMode)
@@ -6402,14 +6645,31 @@ QSize FluentUI3Style::sizeFromContents(ContentsType type, const QStyleOption *op
     {
         contentSize = QProxyStyle::sizeFromContents(type, option, size, widget);
         contentSize.setHeight(32);
-
         if (widget && widget->property(TabBarStyleProperty).toInt() == TabBarStyle::Capsule)
         {
             contentSize.setWidth(contentSize.width() + 30);
         }
-        if (widget && (widget->property(TabBarStyleProperty).toInt() == TabBarStyle::Segmented_Slide || widget->property(TabBarStyleProperty).toInt() == TabBarStyle::Segmented_Fade))
+        if (widget &&
+            (widget->property(TabBarStyleProperty).toInt() == TabBarStyle::Segmented_Slide || widget->property(TabBarStyleProperty).toInt() == TabBarStyle::Segmented_Fade))
         {
             contentSize.setHeight(contentSize.height() + 10);
+        }
+        else if (widget && widget->property(TabBarStyleProperty).toInt() == TabBarStyle::Segmented_WinUI3)
+        {
+            if (const auto *tab = qstyleoption_cast<const QStyleOptionTab *>(option))
+            {
+                if (tab->text.isEmpty())
+                {
+                    // contentSize.setWidth(32);
+                }
+                else if (!tab->text.isEmpty() && tab->icon.isNull())
+                {
+                }
+                else
+                {
+                    contentSize.setWidth(qMax(contentSize.width(), 130));
+                }
+            }
         }
 
         if (widget && widget->property(TabBarStyleProperty).toInt() == TabBarStyle::Navigation)
@@ -6505,9 +6765,9 @@ QSize FluentUI3Style::sizeFromContents(ContentsType type, const QStyleOption *op
     case CT_CheckBox:
     case CT_RadioButton:
     case CT_ComboBox:
-        if (contentSize.height() < 34)
+        if (contentSize.height() < 32)
         {
-            contentSize.setHeight(34);
+            contentSize.setHeight(32);
         }
         break;
     case CT_LineEdit:
@@ -6629,15 +6889,7 @@ int FluentUI3Style::pixelMetric(PixelMetric metric, const QStyleOption *option, 
 
 void FluentUI3Style::polish(QPalette &result)
 {
-#if 0
-    highContrastTheme = isHighContrastTheme();
-    colorSchemeIndex = getColorSchemeIndex();
-
-    if (!highContrastTheme)
-    {
-        PaletteManager::instance().applyPalette(result, colorSchemeIndex);
-    }
-#endif
+    PaletteManager::instance().applyPalette(result, colorSchemeIndex);
 }
 
 void FluentUI3Style::polish(QWidget *widget)
@@ -6673,6 +6925,11 @@ void FluentUI3Style::polish(QWidget *widget)
         tooBtn && (widget->objectName() == "ScrollLeftButton" || widget->objectName() == "ScrollRightButton"))
     {
         tooBtn->setAutoRaise(true);
+    }
+
+    if (qobject_cast<QTabBar *>(widget) && widget->property(TabBarStyleProperty).toInt() == TabBarStyle::Segmented_WinUI3)
+    {
+        widget->installEventFilter(this);
     }
 
     const bool isScrollBar = qobject_cast<QScrollBar *>(widget);
@@ -6752,7 +7009,7 @@ void FluentUI3Style::polish(QWidget *widget)
     }
 
     // QTreeView 提前连接展开/折叠信号，在节点展开/折叠时立即启动箭头旋转动画，
-    if (auto treeView = qobject_cast<QTreeView *>(widget))
+    if (auto treeView = qobject_cast<QTreeView *>(widget); treeView && treeView->isAnimated())
     {
         auto *ctx = new QObject(treeView);
         treeView->setProperty("_q_branch_anim_ctx", QVariant::fromValue(ctx));
@@ -6799,6 +7056,11 @@ void FluentUI3Style::unpolish(QWidget *widget)
     if (!qobject_cast<QCommandLinkButton *>(widget))
 #endif // QT_CONFIG(commandlinkbutton)
         QProxyStyle::unpolish(widget);
+
+    if (qobject_cast<QTabBar *>(widget) && widget->property("TabBarStyle").toInt() == TabBarStyle::Segmented_WinUI3)
+    {
+        widget->removeEventFilter(this);
+    }
 
     if (const auto *scrollarea = qobject_cast<QAbstractScrollArea *>(widget); scrollarea
 #if QT_CONFIG(mdiarea)
@@ -6939,6 +7201,13 @@ QIcon FluentUI3Style::standardIcon(StandardPixmap sp, const QStyleOption *option
     }
 
     return QProxyStyle::standardIcon(sp, option, widget);
+}
+
+QPalette FluentUI3Style::standardPalette() const
+{
+    QPalette palette;
+    PaletteManager::instance().applyPalette(palette, colorSchemeIndex);
+    return palette;
 }
 
 void FluentUI3Style::drawCheckBox(const QStyleOption *option, QPainter *painter, const QWidget *widget) const
@@ -7372,4 +7641,34 @@ void FluentUI3Style::drawEffectShadow(QPainter *painter, QRect widgetRect, int s
         painter->drawPath(path);
     }
     painter->restore();
+}
+
+bool FluentUI3Style::eventFilter(QObject *watched, QEvent *event)
+{
+    if (auto tabBar = qobject_cast<QTabBar *>(watched))
+    {
+        if (event->type() == QEvent::MouseButtonPress)
+        {
+            QMouseEvent *me = static_cast<QMouseEvent *>(event);
+            if (me->button() == Qt::LeftButton)
+            {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+                int index = tabBar->tabAt(me->position().toPoint());
+#else
+                int index = tabBar->tabAt(me->pos());
+#endif
+                if (index >= 0)
+                {
+                    tabBar->setProperty("_q_segmented_winui3_pressed_index", index);
+                    tabBar->update();
+                }
+            }
+        }
+        else if (event->type() == QEvent::MouseButtonRelease || event->type() == QEvent::Leave)
+        {
+            tabBar->setProperty("_q_segmented_winui3_pressed_index", -1);
+            tabBar->update();
+        }
+    }
+    return QProxyStyle::eventFilter(watched, event);
 }

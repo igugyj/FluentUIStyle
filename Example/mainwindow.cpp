@@ -71,6 +71,7 @@
 #include <QTreeWidgetItem>
 #include <QVBoxLayout>
 #include <QWidget>
+#include <QButtonGroup>
 
 // Project Headers
 #include <exstackedwidget.h>
@@ -206,14 +207,10 @@ QIcon createFluentIcon(const QString &unicode, QColor color = QColor())
 
     // Determine if we're using dark theme
     bool isDarkTheme = false;
-#if (QT_VERSION >= QT_VERSION_CHECK(6, 8, 0))
-    isDarkTheme = qApp->styleHints()->colorScheme() == Qt::ColorScheme::Dark;
-#else
 #ifdef FLUENT_USE_QT_STYLE
     isDarkTheme = qApp->property("_q_colorscheme").toInt() == 1;
 #else
     isDarkTheme = fluentUIAppearance.theme() == Theme::Dark;
-#endif
 #endif
 
     // Create pixmap
@@ -257,7 +254,7 @@ MainWindow::MainWindow(QWidget *parent)
     initializeFluentBorderWidgets();
 
     // Setup table widget
-    ui->tableWidget->verticalHeader()->setMinimumSectionSize(32);
+    ui->tableWidget->verticalHeader()->setMinimumSectionSize(36);
 
     // Initialize main components
     initializeComponents();
@@ -278,8 +275,6 @@ MainWindow::MainWindow(QWidget *parent)
         hookContextMenu(widget);
     }
 #endif
-
-    resetPalette();
 }
 
 MainWindow::~MainWindow()
@@ -323,7 +318,8 @@ void MainWindow::initializeFluentBorderWidgets()
 {
     QList<QWidget *> fluentWidgets;
     fluentWidgets << ui->widget << ui->widget_2 << ui->widget_3 << ui->widget_4 << ui->widget_5 << ui->widget_6 << ui->widget_7
-                  << ui->widget_8 << ui->widget_9 << ui->widget_10 << ui->widget_12 << ui->widget_13 << ui->widget_14;
+                  << ui->widget_8 << ui->widget_9 << ui->widget_10 << ui->widget_12 << ui->widget_13 << ui->widget_14
+                  << ui->widgetWidgetMode << ui->widgetNavMode << ui->widgetColorSheme << ui->widgetAccentColor;
 
     for (QWidget *widget : std::as_const(fluentWidgets))
     {
@@ -382,6 +378,9 @@ void MainWindow::initializeComponents()
 
     // Setup buttons and icons
     setupButtonsAndIcons();
+
+    // Setup accent color widget
+    setupAccentColorWidget();
 
     // Setup MDI area
     setupMdiArea();
@@ -583,8 +582,16 @@ void MainWindow::initializeMenuAndToolBar()
     m_toolBar = addToolBar("工具栏");
 
     addToolBarAction(m_toolBar, "\uE700", "", QKeySequence(""));
-    connect(g_actionIconMap.key("\uE700"), &QAction::triggered, [=]()
-            { m_navView->setNavigationExpanded(!m_navView->navigationExpanded()); });
+    connect(g_actionIconMap.key("\uE700"),
+            &QAction::triggered,
+            [=](bool checked)
+            {
+                bool expand = m_navView->navigationExpanded();
+                m_navView->setNavigationExpanded(!expand);
+                ui->footerNavView->setNavigationExpanded(!expand);
+                ui->rBOnlyIcon->setChecked(expand);
+                ui->rBIconAndText->setChecked(!expand);
+            });
     m_toolBar->addSeparator();
 
     // Add file actions
@@ -658,7 +665,7 @@ void MainWindow::setupThemeSelector(QToolBar *toolBar)
     QLabel *themeLabel = new QLabel("主题：", this);
     toolBar->addWidget(themeLabel);
 
-    QComboBox *themeComboBox = new QComboBox(this);
+    themeComboBox = new QComboBox(this);
     themeComboBox->blockSignals(true);
     themeComboBox->addItem("浅色");
     themeComboBox->addItem("暗色");
@@ -666,11 +673,7 @@ void MainWindow::setupThemeSelector(QToolBar *toolBar)
     themeComboBox->setView(new QListView());
 
 #ifdef FLUENT_USE_QT_STYLE
-#if QT_VERSION > QT_VERSION_CHECK(6, 8, 0)
-    themeComboBox->setCurrentIndex(static_cast<int>(qApp->styleHints()->colorScheme()) - 1);
-#else
     themeComboBox->setCurrentIndex(qApp->property("_q_colorscheme").toInt() == 1 ? 1 : 0);
-#endif
 #else
     themeComboBox->setCurrentIndex(fluentUIAppearance.theme() == Theme::Dark ? 1 : 0);
 #endif
@@ -681,17 +684,21 @@ void MainWindow::setupThemeSelector(QToolBar *toolBar)
             [this](int index)
             {
 #ifdef FLUENT_USE_QT_STYLE
-#if QT_VERSION > QT_VERSION_CHECK(6, 8, 0)
-                qApp->styleHints()->setColorScheme(Qt::ColorScheme(index + 1));
-#else
-            qApp->setProperty("_q_colorscheme", index);
-#endif
+                qApp->setProperty("_q_colorscheme", index);
                 qApp->setStyle("FluentUI3");
 #else
             fluentUIAppearance.setTheme(index == 0 ? Theme::Light : Theme::Dark);
 #endif
                 updateActionIcons();
-                resetPalette();
+
+                if (index == 0)
+                {
+                    ui->rBLightTheme->setChecked(true);
+                }
+                else
+                {
+                    ui->rBDarkTheme->setChecked(true);
+                }
             });
 
     toolBar->addWidget(themeComboBox);
@@ -722,7 +729,6 @@ void MainWindow::setupColorSchemeSelector(QToolBar *toolBar)
             fluentUIAppearance.setTheme(fluentUIAppearance.theme());
 #endif
                 updateActionIcons();
-                resetPalette();
             });
 
     toolBar->addWidget(colorSchemeComboBox);
@@ -757,7 +763,7 @@ void MainWindow::setupWidgetBackgroundSelector(QToolBar *toolBar)
     toolBar->addWidget(widgetBgLabel);
 
     m_tabBarWidgetBg = new QTabBar();
-    m_tabBarWidgetBg->setProperty("tabBarStyle", 6);
+    m_tabBarWidgetBg->setProperty("tabBarStyle", 9);
     m_tabBarWidgetBg->addTab("None");
     m_tabBarWidgetBg->addTab("图片");
 
@@ -769,8 +775,17 @@ void MainWindow::setupWidgetBackgroundSelector(QToolBar *toolBar)
             [this](int index)
             {
                 m_widgetBgMode = static_cast<WidgetBgMode>(index);
-                resetPalette();
-                update();
+                qApp->setProperty("_q_widget_mode", index);
+                qApp->setStyle("FluentUI3");
+
+                if (index == 0)
+                {
+                    ui->rBWidgtModeNormal->setChecked(true);
+                }
+                else
+                {
+                    ui->rBWidgetModePixmap->setChecked(true);
+                }
             });
 }
 
@@ -781,23 +796,30 @@ void MainWindow::setupWidgetBackgroundSelector(QToolBar *toolBar)
 void MainWindow::initializeNavigationView()
 {
     m_navView = ui->navView;
-    m_navView->setProperty("ItemHeight", 38);
+    
+    // 添加导航项
     QTreeWidgetItem *basicItem = m_navView->addNavigationItem("基础控件", 0, "\uE80F");
     m_navView->addNavigationItem("表格控件", 1, "\uE99A");
     m_navView->addNavigationItem("列表控件", 2, "\uE71D");
     m_navView->addNavigationItem("树形控件", 3, "\uED28");
     m_navView->addNavigationItem("导航控件", 4, "\uE8B0");
     m_navView->addNavigationItem("Mdi", 5, "\uE9D9");
-    m_navView->addNavigationItem("设置", 6, "\uE9F5");
     addTestNavigationTree();
-    connect(m_navView,
-            &ExNavTreeWidget::pageIndexChanged,
-            this,
-            [this](int pageIndex)
-            { ui->stackedWidget->setCurrentIndex(pageIndex); });
+
+    ui->footerNavView->addNavigationItem("关于", 0, "\uE77B");
+    ui->footerNavView->addNavigationItem("设置", 6, "\uE713");
+    ui->footerNavView->setFixedHeightByItems(true);
+
+    // 共享同一个 QStackedWidget 用于页面切换
+    m_navView->setStackedWidget(ui->stackedWidget);
+    ui->footerNavView->setStackedWidget(ui->stackedWidget);
 
     m_navView->setCurrentItem(basicItem);
     m_navView->setNavigationExpanded(false, false);
+
+    ui->footerNavView->clearSelection();
+    ui->footerNavView->setCurrentIndex(QModelIndex());
+    ui->footerNavView->setNavigationExpanded(false, false);
 }
 
 void MainWindow::addTestNavigationTree()
@@ -904,7 +926,7 @@ void MainWindow::setupTabs()
     contentWidget->setAutoFillBackground(false);
     pageLayout->addWidget(scrollArea);
 
-    QLabel* lab = new QLabel("TabBar多种样式示例");
+    QLabel *lab = new QLabel("TabBar多种样式示例");
     lab->setStyleSheet("font-size:18pt; font-weight:bold;");
     mainLayout->addWidget(lab);
 
@@ -946,6 +968,13 @@ void MainWindow::setupSegmentedTabs(QVBoxLayout *mainLayout)
 
     // Segmented Fade
     addTabBarSection(segmentedLayout, "Segmented Fade TabBar", "特点：选中时会有一个淡入淡出动画效果。", 7, &m_segmentedFadeBar);
+
+    // Segmented WinUI3
+    addTabBarSection(segmentedLayout,
+                      "Segmented WinUI3 TabBar",
+                      "特点：Segmented风格，使用更接近 WinUI3 的选中指示器效果。",
+                      9,
+                      &m_winui3Bar);
 
     segmentedLayout->addStretch();
     mainLayout->addWidget(segmentedWidget, 1);
@@ -1255,6 +1284,14 @@ void MainWindow::updateSegmentedBarIcons()
             m_segmentedFadeBar->setTabIcon(i, createFluentIcon(iconCodes[i]));
         }
     }
+
+    if (m_winui3Bar)
+    {
+        for (int i = 0; i < iconCodes.size() && i < m_winui3Bar->count(); ++i)
+        {
+            m_winui3Bar->setTabIcon(i, createFluentIcon(iconCodes[i]));
+        }
+    }
 }
 
 void MainWindow::updateNavigationTabIcons()
@@ -1352,52 +1389,6 @@ void MainWindow::loadChangelog()
         ui->log->append("无法打开changelog.txt, " + file.errorString());
     }
 }
-
-void MainWindow::resetPalette()
-{
-    QPalette originPalette = qApp->palette();
-    auto setAlpha = [&](QPalette::ColorGroup group, QPalette::ColorRole colorRole, int a)
-    {
-        QColor cr1 = originPalette.color(group, colorRole);
-        if (cr1.alpha() == a)
-        {
-            return;
-        }
-
-        cr1.setAlpha(a);
-        originPalette.setColor(group, colorRole, cr1);
-    };
-
-    //Example项目
-    //WidgetBgMode::Pixmap需要Base和Window有透明度，不然看不见背景
-    if (m_widgetBgMode == WidgetBgMode::Pixmap)
-    {
-        setAlpha(QPalette::Active, QPalette::Base, 0);
-        setAlpha(QPalette::Active, QPalette::Window, 160);
-
-        setAlpha(QPalette::Disabled, QPalette::Base, 0);
-        setAlpha(QPalette::Disabled, QPalette::Window, 160);
-
-        setAlpha(QPalette::Inactive, QPalette::Base, 0);
-        setAlpha(QPalette::Inactive, QPalette::Window, 160);
-    }
-    else
-    {
-        setAlpha(QPalette::Active, QPalette::Base, 255);
-        setAlpha(QPalette::Active, QPalette::Window, 255);
-
-        setAlpha(QPalette::Disabled, QPalette::Base, 255);
-        setAlpha(QPalette::Disabled, QPalette::Window, 255);
-
-        setAlpha(QPalette::Inactive, QPalette::Base, 255);
-        setAlpha(QPalette::Inactive, QPalette::Window, 255);
-    }
-    qApp->setPalette(originPalette);
-}
-
-//=============================================================================
-// Slot Functions
-//=============================================================================
 
 enum class SpinBoxButtonStyle
 {
@@ -1665,6 +1656,137 @@ static inline void emulateLeaveEvent(QWidget *widget)
                                }
                            }
                        });
+}
+
+void MainWindow::on_rBLightTheme_clicked(bool checked)
+{
+    themeComboBox->setCurrentIndex(0);
+}
+
+void MainWindow::on_rBDarkTheme_clicked(bool checked)
+{
+    themeComboBox->setCurrentIndex(1);
+}
+
+void MainWindow::on_rBWidgtModeNormal_clicked(bool checked)
+{
+    m_tabBarWidgetBg->setCurrentIndex(0);
+}
+
+void MainWindow::on_rBWidgetModePixmap_clicked(bool checked)
+{
+    m_tabBarWidgetBg->setCurrentIndex(1);
+}
+
+void MainWindow::on_rBOnlyIcon_clicked(bool checked)
+{
+    m_navView->setNavigationExpanded(false);
+    ui->footerNavView->setNavigationExpanded(false);
+}
+
+void MainWindow::on_rBIconAndText_clicked(bool checked)
+{
+    m_navView->setNavigationExpanded(true);
+    ui->footerNavView->setNavigationExpanded(true);
+}
+
+void MainWindow::setupAccentColorWidget()
+{
+    if (ui->widgetAccentColor->layout())
+    {
+        delete ui->widgetAccentColor->layout();
+    }
+    QHBoxLayout *layout = new QHBoxLayout(ui->widgetAccentColor);
+
+    QList<QColor> colors = {
+        QColor(),          // Default (represented by invalid QColor)
+        QColor("#FFB900"), // Yellow
+        QColor("#FF8C00"), // Orange
+        QColor("#E81123"), // Red
+        QColor("#E3008C"), // Magenta
+        QColor("#881798"), // Purple
+        QColor("#0078D4"), // Blue
+        QColor("#00B7C3"), // Teal
+        QColor("#107C10")  // Green
+    };
+
+    QFont iconFont("Segoe Fluent Icons");
+    iconFont.setPixelSize(20);
+
+    QButtonGroup *btnGroup = new QButtonGroup(this);
+    btnGroup->setExclusive(true);
+
+    for (int i = 0; i < colors.size(); ++i)
+    {
+        QColor color = colors[i];
+        QPushButton *btn = new QPushButton(ui->widgetAccentColor);
+        btn->setFixedSize(40, 40);
+        btn->setCheckable(true);
+        btn->setFont(iconFont);
+        btnGroup->addButton(btn, i);
+
+        QColor bgColor = color.isValid() ? color : QColor("#0078D4");
+        QString style = QString(
+                            "QPushButton {"
+                            "   background-color: %1;"
+                            "   border: 1px solid rgba(0, 0, 0, 0.1);"
+                            "   border-radius: 4px;"
+                            "}"
+                            "QPushButton:hover {"
+                            "   background-color: %2;"
+                            "}"
+                            "QPushButton:pressed {"
+                            "   background-color: %3;"
+                            "}")
+                            .arg(bgColor.name())
+                            .arg(bgColor.lighter(110).name())
+                            .arg(bgColor.darker(110).name());
+
+        btn->setStyleSheet(style);
+
+        if (!color.isValid())
+        {
+            btn->setToolTip("恢复默认");
+        }
+        else
+        {
+            btn->setToolTip(color.name());
+        }
+        layout->addWidget(btn);
+    }
+    layout->addSpacerItem(new QSpacerItem(1, 1, QSizePolicy::Expanding, QSizePolicy::Preferred));
+
+    connect(btnGroup, &QButtonGroup::idClicked, this, [=](int id)
+            {
+                for (QAbstractButton *b : btnGroup->buttons())
+                {
+                    b->setText("");
+                }
+
+                QAbstractButton *clickedBtn = btnGroup->button(id);
+                if (clickedBtn)
+                {
+                    clickedBtn->setText(QString::fromUtf16(u"\uE73E"));
+                }
+
+                QColor color = colors[id];
+                if (color.isValid())
+                {
+                    qApp->setProperty("_q_accent_color", color);
+                }
+                else
+                {
+                    qApp->setProperty("_q_accent_color", QVariant());
+                }
+                qApp->setStyle("FluentUI3"); // Trigger repaint
+            });
+
+    QAbstractButton *defaultBtn = btnGroup->button(0);
+    if (defaultBtn)
+    {
+        defaultBtn->setChecked(true);
+        defaultBtn->setText(QString::fromUtf16(u"\uE73E"));
+    }
 }
 
 //=============================================================================

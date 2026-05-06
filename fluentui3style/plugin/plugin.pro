@@ -33,6 +33,10 @@ win32-g++ {
     QMAKE_POST_LINK += $$quote(test -d "$$TARGET_STYLE_DIR" || mkdir -p "$$TARGET_STYLE_DIR") $$escape_expand(\\n\\t)
     QMAKE_POST_LINK += $$quote(cp -f "$$DLL_PATH" "$$TARGET_STYLE_DIR/") $$escape_expand(\\n\\t)
     QMAKE_POST_LINK += $$quote(echo "Success! Plugin copied to Qt dir.")
+    CONFIG(release, debug|release) {
+        # 在 MinGW 下的 Release 也生成调试信息，便于分析崩溃堆栈
+        QMAKE_CXXFLAGS_RELEASE += -g
+    }
 }
 
 win32-msvc {
@@ -47,5 +51,17 @@ win32-msvc {
         PDB_PATH_WIN = $$replace(PDB_PATH, /, \\)
         QMAKE_POST_LINK += $$quote(if exist "$$PDB_PATH_WIN" copy /y "$$PDB_PATH_WIN" "$$TARGET_STYLE_DIR_WIN" > nul) $$escape_expand(\\n\\t)
     }
+    CONFIG(release, debug|release) {
+        PDB_PATH = $${DESTDIR}/$${TARGET}.pdb
+        PDB_PATH_WIN = $$replace(PDB_PATH, /, \\)
+        QMAKE_POST_LINK += $$quote(if exist "$$PDB_PATH_WIN" copy /y "$$PDB_PATH_WIN" "$$TARGET_STYLE_DIR_WIN" > nul) $$escape_expand(\\n\\t)
+    }
     QMAKE_POST_LINK += $$quote(echo Success! Plugin copied to Qt dir.)
+
+    # 在 MSVC 的 Release 下生成 PDB（/Zi + 链接器 /DEBUG）
+    CONFIG(release, debug|release) {
+        QMAKE_CFLAGS_RELEASE += /Zi
+        QMAKE_CXXFLAGS_RELEASE += /Zi
+        QMAKE_LFLAGS_RELEASE += /DEBUG
+    }
 }

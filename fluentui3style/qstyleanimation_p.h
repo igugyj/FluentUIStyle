@@ -35,7 +35,7 @@ public:
 
     QObject *target() const;
 
-    int duration() const ;
+    int duration() const;
     void setDuration(int duration);
 
     int delay() const;
@@ -44,7 +44,8 @@ public:
     QTime startTime() const;
     void setStartTime(QTime time);
 
-    enum FrameRate {
+    enum FrameRate
+    {
         DefaultFps,
         SixtyFps,
         ThirtyFps,
@@ -122,15 +123,19 @@ class QBlendStyleAnimation : public QStyleAnimation
     Q_OBJECT
 
 public:
-    enum Type { Transition, Pulse };
+    enum Type
+    {
+        Transition,
+        Pulse
+    };
 
     QBlendStyleAnimation(Type type, QObject *target);
 
     QImage startImage() const;
-    void setStartImage(const QImage& image);
+    void setStartImage(const QImage &image);
 
     QImage endImage() const;
-    void setEndImage(const QImage& image);
+    void setEndImage(const QImage &image);
 
     QImage currentImage() const;
 
@@ -149,7 +154,11 @@ class QScrollbarStyleAnimation : public QNumberStyleAnimation
     Q_OBJECT
 
 public:
-    enum Mode { Activating, Deactivating };
+    enum Mode
+    {
+        Activating,
+        Deactivating
+    };
 
     QScrollbarStyleAnimation(Mode mode, QObject *target);
 

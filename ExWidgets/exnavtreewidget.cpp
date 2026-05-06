@@ -2,7 +2,6 @@
 
 #include <climits>
 
-#include <QApplication>
 #include <QAbstractItemView>
 #include <QEvent>
 #include <QEasingCurve>
@@ -12,6 +11,18 @@
 #include <QPixmap>
 #include <QStyle>
 #include <QMouseEvent>
+#include <QStackedWidget>
+
+class ExNavTreeWidgetPrivate
+{
+public:
+    QVariantAnimation *navigationWidthAnimation{nullptr};
+    QStackedWidget *stackedWidget{nullptr};
+    bool navigationExpanded{false};
+    bool autoFixedHeight{false};
+    int navigationCompactWidth{44};
+    int navigationExpandedWidth{200};
+};
 
 namespace
 {
@@ -47,89 +58,94 @@ namespace
 }
 
 ExNavTreeWidget::ExNavTreeWidget(QWidget *parent)
-    : QTreeWidget(parent)
+    : QTreeWidget(parent), d_ptr(new ExNavTreeWidgetPrivate)
 {
+    Q_D(ExNavTreeWidget);
     setObjectName("ExNavTreeWidget");
 
-    QFont navFont = font();
-    navFont.setPixelSize(navFont.pixelSize() + 1);
-    navFont.setHintingPreference(QFont::PreferFullHinting);
+    // QFont navFont = font();
+    // navFont.setFamily("Microsoft YaHei UI");
+    // // navFont.setHintingPreference(QFont::PreferFullHinting);
+    // setFont(navFont);
 
     setAnimated(true);
     setIconSize(QSize(20, 20));
     setSelectionBehavior(QAbstractItemView::SelectRows);
-    setFont(navFont);
     setRootIsDecorated(false);
     setFrameShape(QFrame::NoFrame);
     setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     setTextElideMode(Qt::ElideRight);
     setStyleSheet("ExNavTreeWidget{background:transparent;}");
     setProperty("navigationViewIndicator", true);
+    setProperty("ItemHeight", 38);
     header()->setSectionResizeMode(0, QHeaderView::Fixed);
-    setColumnWidth(0, m_navigationCompactWidth);
-    setFixedWidth(m_navigationCompactWidth);
+    setColumnWidth(0, d->navigationCompactWidth);
+    setFixedWidth(d->navigationCompactWidth);
 
-    m_navigationWidthAnimation = new QVariantAnimation(this);
-    m_navigationWidthAnimation->setDuration(280);
-    m_navigationWidthAnimation->setEasingCurve(QEasingCurve::OutCubic);
-    connect(m_navigationWidthAnimation,
+    d->navigationWidthAnimation = new QVariantAnimation(this);
+    d->navigationWidthAnimation->setDuration(280);
+    d->navigationWidthAnimation->setEasingCurve(QEasingCurve::OutCubic);
+    connect(d->navigationWidthAnimation,
             &QVariantAnimation::valueChanged,
             this,
             [this](const QVariant &value)
             {
                 updateNavigationViewByWidth(value.toInt());
             });
-    connect(m_navigationWidthAnimation,
+    connect(d->navigationWidthAnimation,
             &QVariantAnimation::finished,
             this,
             [this]()
             {
-                const int targetWidth = m_navigationExpanded ? m_navigationExpandedWidth : m_navigationCompactWidth;
+                Q_D(ExNavTreeWidget);
+                const int targetWidth = d->navigationExpanded ? d->navigationExpandedWidth : d->navigationCompactWidth;
                 updateNavigationViewByWidth(targetWidth);
             });
 
-    connect(this,
-            &QTreeWidget::currentItemChanged,
-            this,
-            [this](QTreeWidgetItem *current, QTreeWidgetItem *)
-            {
-                if (!current)
-                {
-                    return;
-                }
-
-                const QVariant pageIndex = current->data(0, NavigationPageRole);
-                if (pageIndex.isValid())
-                {
-                    emit pageIndexChanged(pageIndex.toInt());
-                }
-            });
+    connect(this, &QTreeWidget::currentItemChanged, this, &ExNavTreeWidget::handleItemSelection);
 }
+
+ExNavTreeWidget::~ExNavTreeWidget() = default;
 
 void ExNavTreeWidget::setCompactWidth(int width)
 {
-    m_navigationCompactWidth = qMax(1, width);
-    if (!m_navigationExpanded)
+    Q_D(ExNavTreeWidget);
+    d->navigationCompactWidth = qMax(1, width);
+    if (!d->navigationExpanded)
     {
-        m_navigationWidthAnimation->stop();
-        updateNavigationViewByWidth(m_navigationCompactWidth);
+        d->navigationWidthAnimation->stop();
+        updateNavigationViewByWidth(d->navigationCompactWidth);
     }
+}
+
+int ExNavTreeWidget::compactWidth() const
+{
+    Q_D(const ExNavTreeWidget);
+    return d->navigationCompactWidth;
 }
 
 void ExNavTreeWidget::setExpandedWidth(int width)
 {
-    m_navigationExpandedWidth = qMax(m_navigationCompactWidth, width);
-    if (m_navigationExpanded)
+    Q_D(ExNavTreeWidget);
+    d->navigationExpandedWidth = qMax(d->navigationCompactWidth, width);
+    if (d->navigationExpanded)
     {
-        m_navigationWidthAnimation->stop();
-        updateNavigationViewByWidth(m_navigationExpandedWidth);
+        d->navigationWidthAnimation->stop();
+        updateNavigationViewByWidth(d->navigationExpandedWidth);
     }
+}
+
+int ExNavTreeWidget::expandedWidth() const
+{
+    Q_D(const ExNavTreeWidget);
+    return d->navigationExpandedWidth;
 }
 
 QTreeWidgetItem *ExNavTreeWidget::addNavigationItem(const QString &text, int pageIndex, const QString &iconCode)
 {
     QTreeWidgetItem *item = new QTreeWidgetItem(this);
     configureNavigationItem(item, text, pageIndex, iconCode);
+    updateFixedHeight();
     return item;
 }
 
@@ -145,7 +161,8 @@ void ExNavTreeWidget::configureNavigationItem(QTreeWidgetItem *item, const QStri
     item->setData(0, NavigationIconRole, iconCode);
     item->setToolTip(0, text);
     updateNavigationItemIcon(item);
-    updateNavigationItemText(item, m_navigationExpanded);
+    Q_D(const ExNavTreeWidget);
+    updateNavigationItemText(item, d->navigationExpanded);
 }
 
 void ExNavTreeWidget::refreshNavigationIcons()
@@ -158,10 +175,11 @@ void ExNavTreeWidget::refreshNavigationIcons()
 
 void ExNavTreeWidget::setNavigationExpanded(bool expanded, bool animated)
 {
-    m_navigationExpanded = expanded;
+    Q_D(ExNavTreeWidget);
+    d->navigationExpanded = expanded;
 
-    const int targetWidth = expanded ? m_navigationExpandedWidth : m_navigationCompactWidth;
-    if (!animated || !m_navigationWidthAnimation)
+    const int targetWidth = expanded ? d->navigationExpandedWidth : d->navigationCompactWidth;
+    if (!animated || !d->navigationWidthAnimation)
     {
         updateNavigationViewByWidth(targetWidth);
         return;
@@ -173,20 +191,77 @@ void ExNavTreeWidget::setNavigationExpanded(bool expanded, bool animated)
         return;
     }
 
-    m_navigationWidthAnimation->stop();
-    m_navigationWidthAnimation->setStartValue(currentWidth);
-    m_navigationWidthAnimation->setEndValue(targetWidth);
-    m_navigationWidthAnimation->start();
+    d->navigationWidthAnimation->stop();
+    d->navigationWidthAnimation->setStartValue(currentWidth);
+    d->navigationWidthAnimation->setEndValue(targetWidth);
+    d->navigationWidthAnimation->start();
 }
 
 bool ExNavTreeWidget::navigationExpanded() const
 {
-    return m_navigationExpanded;
+    Q_D(const ExNavTreeWidget);
+    return d->navigationExpanded;
 }
 
 void ExNavTreeWidget::toggleNavigationMode()
 {
-    setNavigationExpanded(!m_navigationExpanded, true);
+    Q_D(ExNavTreeWidget);
+    setNavigationExpanded(!d->navigationExpanded, true);
+}
+
+void ExNavTreeWidget::setStackedWidget(QStackedWidget *stack)
+{
+    Q_D(ExNavTreeWidget);
+    d->stackedWidget = stack;
+}
+
+QStackedWidget *ExNavTreeWidget::stackedWidget() const
+{
+    Q_D(const ExNavTreeWidget);
+    return d->stackedWidget;
+}
+
+void ExNavTreeWidget::setFixedHeightByItems(bool enabled)
+{
+    Q_D(ExNavTreeWidget);
+    d->autoFixedHeight = enabled;
+    updateFixedHeight();
+}
+
+void ExNavTreeWidget::updateFixedHeight()
+{
+    Q_D(ExNavTreeWidget);
+    if (d->autoFixedHeight)
+    {
+        int itemHeight = property("ItemHeight").toInt();
+        if (itemHeight <= 0)
+            itemHeight = 38;
+        setFixedHeight(topLevelItemCount() * itemHeight);
+    }
+}
+
+void ExNavTreeWidget::handleItemSelection(QTreeWidgetItem *current)
+{
+    if (!current)
+    {
+        return;
+    }
+
+    const QVariant pageData = current->data(0, NavigationPageRole);
+    if (!pageData.isValid())
+    {
+        return;
+    }
+
+    const int pageIndex = pageData.toInt();
+
+    Q_D(ExNavTreeWidget);
+    if (d->stackedWidget)
+    {
+        d->stackedWidget->setCurrentIndex(pageIndex);
+    }
+
+    emit pageIndexChanged(pageIndex);
 }
 
 void ExNavTreeWidget::changeEvent(QEvent *event)
@@ -284,7 +359,8 @@ void ExNavTreeWidget::updateNavigationItemVisibilityForDepth(QTreeWidgetItem *it
 
 void ExNavTreeWidget::updateNavigationViewByWidth(int width)
 {
-    const int textSwitchWidth = m_navigationCompactWidth + (m_navigationExpandedWidth - m_navigationCompactWidth) * 2 / 3;
+    Q_D(ExNavTreeWidget);
+    const int textSwitchWidth = d->navigationCompactWidth + (d->navigationExpandedWidth - d->navigationCompactWidth) * 2 / 3;
     const bool showText = width >= textSwitchWidth;
     const int visibleDepth = showText ? INT_MAX : 1;
 
@@ -334,7 +410,7 @@ void ExNavTreeWidget::updateNavigationViewByWidth(int width)
 
     const int scrollBarExtent = style()->pixelMetric(QStyle::PM_ScrollBarExtent, nullptr, this);
     const int frameBorderWidth = this->frameWidth() * 2;
-    const int safeColumnWidth = qMax(m_navigationCompactWidth, width - scrollBarExtent - frameBorderWidth);
+    const int safeColumnWidth = qMax(d->navigationCompactWidth, width - scrollBarExtent - frameBorderWidth);
     setColumnWidth(0, safeColumnWidth);
 
     for (int i = 0; i < topLevelItemCount(); ++i)

@@ -1,8 +1,8 @@
 #include "fluentui3colors.h"
 
 const std::array<QColor, WINUI3Color::count> WINUI3ColorsLight{
-    QColor(0x00, 0x00, 0x00, percentToAlpha(5.5)),   // subtleHighlightColor (fillSubtleSecondary)
-    QColor(0x00, 0x00, 0x00, percentToAlpha(4.0)),   // subtlePressedColor (fillSubtleTertiary)
+    QColor(0x00, 0x00, 0x00, percentToAlpha(4.0)),   // subtleHighlightColor (fillSubtleSecondary)
+    QColor(0x00, 0x00, 0x00, percentToAlpha(5.5)),   // subtlePressedColor (fillSubtleTertiary)
     QColor(0x00, 0x00, 0x00, 0x0F),                  // frameColorLight
     QColor(0x00, 0x00, 0x00, percentToAlpha(60.63)), // frameColorStrong
     QColor(0x00, 0x00, 0x00, percentToAlpha(21.69)), // frameColorStrongDisabled
@@ -45,8 +45,8 @@ const std::array<QColor, WINUI3Color::count> WINUI3ColorsLight{
 };
 
 const std::array<QColor, WINUI3Color::count> WINUI3ColorsDark{
-    QColor(0xFF, 0xFF, 0xFF, percentToAlpha(6.05)),  // subtleHighlightColor (fillSubtleSecondary)
-    QColor(0xFF, 0xFF, 0xFF, percentToAlpha(4.19)),  // subtlePressedColor (fillSubtleTertiary)
+    QColor(0xFF, 0xFF, 0xFF, percentToAlpha(4.19)),  // subtleHighlightColor (fillSubtleSecondary)
+    QColor(0xFF, 0xFF, 0xFF, percentToAlpha(6.05)),  // subtlePressedColor (fillSubtleTertiary)
     QColor(0xFF, 0xFF, 0xFF, 0x12),                  // frameColorLight
     QColor(0xFF, 0xFF, 0xFF, percentToAlpha(60.47)), // frameColorStrong
     QColor(0xFF, 0xFF, 0xFF, percentToAlpha(15.81)), // frameColorStrongDisabled
