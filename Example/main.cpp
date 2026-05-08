@@ -35,22 +35,7 @@ int main(int argc, char *argv[])
     QGuiApplication::setHighDpiScaleFactorRoundingPolicy(Qt::HighDpiScaleFactorRoundingPolicy::PassThrough);
 #endif
 
-    qputenv("QT_WIN_DEBUG_CONSOLE", "attach");
-    qputenv("QSG_INFO", "1");
-    //qputenv("QT_WIDGETS_HIGHDPI_DOWNSCALE", "1");
-    //qputenv("QT_WIDGETS_RHI", "1");
-    //qputenv("QSG_RHI_BACKEND", "d3d12");
-    //qputenv("QSG_RHI_HDR", "scrgb");
-    //qputenv("QT_QPA_DISABLE_REDIRECTION_SURFACE", "1");
-
     QApplication a(argc, argv);
-
-    QFont font = qApp->font();
-    font.setPixelSize(13);
-    font.setFamily("Microsoft YaHei");
-    font.setHintingPreference(QFont::PreferNoHinting);
-    qApp->setFont(font);
-
     //FLUENT_USE_QT_STYLE只是在本项目中为了“qApp->setStyle("FluentUI3");”
     //和“fluentUIAppearance.initialize();”方式的切换，其他项目中可以根据需要选择使用哪种方式
 
@@ -63,13 +48,19 @@ int main(int argc, char *argv[])
     fluentUIAppearance.initialize();
 #endif
 
-#ifndef FLUENT_USE_QT_STYLE
-    fluentUIAppearance.setMainWindow(&w); //动态切换标题栏颜色建议重启软件
-#endif
-
     //需要图片背景，配合示例中实现的逻辑，先setStyle，在new QWidget
     MainWindow w;
     w.show();
+
+    QFont font = a.font();
+    font.setPixelSize(13);
+    font.setFamily("微软雅黑");
+    font.setHintingPreference(QFont::PreferNoHinting);
+    a.setFont(font);
+
+#ifndef FLUENT_USE_QT_STYLE
+    fluentUIAppearance.setMainWindow(&w); //动态切换标题栏颜色建议重启软件
+#endif
 
     return a.exec();
 }

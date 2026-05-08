@@ -61,6 +61,12 @@ ExNavTreeWidget::ExNavTreeWidget(QWidget *parent)
     Q_D(ExNavTreeWidget);
     setObjectName("ExNavTreeWidget");
 
+    QFont font = this->font();
+    font.setPixelSize(13);
+    font.setFamily("微软雅黑");
+    font.setHintingPreference(QFont::PreferNoHinting);
+    setFont(font);
+
     setAnimated(true);
     setIconSize(QSize(20, 20));
     setSelectionBehavior(QAbstractItemView::SelectRows);

@@ -10,6 +10,7 @@
 #include <QGraphicsView>
 #include <QHash>
 #include <QIcon>
+#include <QHoverEvent>
 #include <QLineEdit>
 #include <QListView>
 #include <QMdiArea>
@@ -30,6 +31,7 @@
 #include <QTextLayout>
 #include <QToolButton>
 #include <QTreeView>
+#include <QCursor>
 #include <QMouseEvent>
 #include <QtMath>
 #include <QtGlobal>
@@ -65,15 +67,22 @@ static constexpr int contentHMargin = 2 * 3;        // margin between rounded bo
 /// 用于 input 控件作为 delegate editor 时，防止半透明背景透底。
 static QColor resolveOpaque(const QColor &fluentColor, const QColor &base)
 {
-    Q_UNUSED(base)
-    return fluentColor;
-    // if (fluentColor.alpha() == 255)
-    //     return fluentColor;
-    // const double a = fluentColor.alphaF();
-    // return QColor(
-    //     qRound(base.red() * (1.0 - a) + fluentColor.red() * a),
-    //     qRound(base.green() * (1.0 - a) + fluentColor.green() * a),
-    //     qRound(base.blue() * (1.0 - a) + fluentColor.blue() * a));
+    if (fluentColor.alpha() == 255)
+        return fluentColor;
+    const double a = fluentColor.alphaF();
+    return QColor(qRound(base.red() * (1.0 - a) + fluentColor.red() * a),
+                  qRound(base.green() * (1.0 - a) + fluentColor.green() * a),
+                  qRound(base.blue() * (1.0 - a) + fluentColor.blue() * a));
+}
+
+static QColor opaqueBlendBase(const QPalette &palette, bool darkTheme)
+{
+    QColor base = palette.base().color();
+    if (base.alpha() == 0)
+        base = palette.window().color();
+    if (base.alpha() == 0)
+        base = darkTheme ? QColor(0x1E, 0x1E, 0x1E) : QColor(0xFF, 0xFF, 0xFF);
+    return base;
 }
 
 static constexpr int menuItemVMargin = 3; // vertical margin for menu items
@@ -1811,7 +1820,7 @@ void FluentUI3Style::drawComplexControl(ComplexControl control,
             {
                 QRectF arrowRect = proxy()->subControlRect(CC_ComboBox, option, SC_ComboBoxArrow, widget).adjusted(4, 0, -4, 0);
                 static QFont f = assetFont;
-                f.setPixelSize(15);
+                f.setPixelSize(14);
                 painter->setFont(f);
                 painter->setPen(controlTextColor(option));
                 QNumberStyleAnimation *animation = qobject_cast<QNumberStyleAnimation *>(getAnimation(option->styleObject));
@@ -2316,7 +2325,6 @@ void FluentUI3Style::drawPrimitive(PrimitiveElement element, const QStyleOption 
                     t->setStartValue(animationValue(styleObject, "_q_thumb_pos", oldState & State_On ? 1.0f : 0.0f));
                     t->setEndValue(state & State_On ? 1.0f : 0.0f);
                     t->setDuration(150);
-                    t->setEasingCurve(QEasingCurve::InOutSine);
                     t->setFrameRate(QStyleAnimation::DefaultFps);
                     startAnimationEx(t, styleObject, "_q_thumb_pos");
                 }
@@ -2325,9 +2333,16 @@ void FluentUI3Style::drawPrimitive(PrimitiveElement element, const QStyleOption 
                     QNumberStyleAnimation *t = new QNumberStyleAnimation(styleObject);
                     t->setStartValue(animationValue(styleObject, "_q_thumb_scale", oldState & State_MouseOver ? 1.1f : 0.9f));
                     t->setEndValue(state & State_MouseOver ? 1.1f : 0.9f);
-                    t->setDuration(150);
-                    // t->setEasingCurve( QEasingCurve::InOutCubic );
+                    t->setDuration(180);
                     startAnimationEx(t, styleObject, "_q_thumb_scale");
+                }
+                if ((state & State_Sunken) != (oldState & State_Sunken))
+                {
+                    QNumberStyleAnimation *t = new QNumberStyleAnimation(styleObject);
+                    t->setStartValue(animationValue(styleObject, "_q_thumb_stretch", oldState & State_Sunken ? 1.3f : 1.0f));
+                    t->setEndValue(state & State_Sunken ? 1.3f : 1.0f);
+                    t->setDuration(120);
+                    startAnimationEx(t, styleObject, "_q_thumb_stretch");
                 }
             }
         }
@@ -2794,8 +2809,10 @@ void FluentUI3Style::drawPrimitive(PrimitiveElement element, const QStyleOption 
                         isLast = !isLast;
                     }
 
-                    const QAbstractItemView *view = qobject_cast<const QAbstractItemView *>(widget);
-                    painter->setBrush(view->alternatingRowColors() ? vopt->palette.highlight() : winUI3Color(subtleHighlightColor));
+                    const bool isSelected = (vopt->state & State_Selected) != 0;
+                    const QColor itemHighlight = isSelected ? winUI3Color(subtlePressedColor)
+                                                            : winUI3Color(subtleHighlightColor);
+                    painter->setBrush(itemHighlight);
                     painter->setPen(Qt::NoPen);
                     if (isFirst)
                     {
@@ -2819,6 +2836,7 @@ void FluentUI3Style::drawPrimitive(PrimitiveElement element, const QStyleOption 
                     }
                 }
             }
+
         }
         break;
     case PE_Widget:
@@ -2844,7 +2862,28 @@ void FluentUI3Style::drawPrimitive(PrimitiveElement element, const QStyleOption 
             pen.setWidth(1);
             painter->setPen(pen);
 
-            QColor brColor = highContrastTheme ? option->palette.base().color() : winUI3Color(cardBackgroundFillColorDefault);
+            QColor brColor;
+            if (highContrastTheme)
+            {
+                brColor = option->palette.base().color();
+            }
+            else
+            {
+                const QColor cardColor = winUI3Color(cardBackgroundFillColorDefault);
+                const QColor blendBase = opaqueBlendBase(option->palette, colorSchemeIndex == 1);
+                brColor = resolveOpaque(cardColor, blendBase);
+
+                // Example项目:
+                // WidgetBgMode::Pixmap 会把 Base/Window 设为透明，这里保留最低透明度避免 card 过深或过透。
+                //不需要的话，直接使用cardColor即可
+                const bool wallpaperMode = qApp && qApp->property("_q_widget_mode").toBool();
+                if (wallpaperMode)
+                {
+                    const int minAlpha = (colorSchemeIndex == 1) ? 72 : 92;
+                    const int keepAlpha = qMax(minAlpha, qMin(160, blendBase.alpha()));
+                    brColor.setAlpha(keepAlpha);
+                }
+            }
             painter->setBrush(brColor);
             painter->drawRoundedRect(r, 4, 4);
 
@@ -6095,6 +6134,11 @@ void FluentUI3Style::drawControl(ControlElement element, const QStyleOption *opt
     }
     case CE_HeaderEmptyArea:
         break;
+    case CE_HeaderLabel:
+    {
+        QProxyStyle::drawControl(element, option, painter, widget);
+        break;
+    }
     case CE_HeaderSection:
     {
         if (const QStyleOptionHeader *header = qstyleoption_cast<const QStyleOptionHeader *>(option))
@@ -6202,9 +6246,86 @@ void FluentUI3Style::drawControl(ControlElement element, const QStyleOption *opt
                     isLast = false;
                 }
             }
-            const bool highlightCurrent = (vopt->state & (State_Selected | State_MouseOver)) != 0;
+            bool highlightCurrent = (vopt->state & (State_Selected | State_MouseOver)) != 0;
+            const QTableView *tableView = qobject_cast<const QTableView *>(widget);
+            bool tableCellHighlightHandled = false;
+            const bool tableRowStrategy = tableView && !highContrastTheme && vopt->index.isValid()
+                                          && tableView->selectionBehavior() == QAbstractItemView::SelectRows;
 
-            if (highlightCurrent)
+            if (tableRowStrategy)
+            {
+                bool rowSelected = (vopt->state & State_Selected) != 0;
+                bool rowHovered = false;
+                if (!rowSelected && tableView->viewport())
+                {
+                    const int hoverRow = tableView->viewport()->property("_q_table_hover_row").toInt();
+                    rowHovered = (hoverRow >= 0 && hoverRow == vopt->index.row());
+                }
+
+                if (rowSelected || rowHovered)
+                {
+                    QColor accent = vopt->palette.highlight().color();
+                    const bool isDark = colorSchemeIndex == 1;
+                    accent.setAlpha(255);
+
+                    const QRect cellRect = rect.marginsRemoved(QMargins(0, 1, 0, 1));
+                    QColor fill = accent;
+                    fill.setAlpha(rowSelected ? (isDark ? 56 : 40) : (isDark ? 40 : 28));
+                    painter->fillRect(cellRect, fill);
+
+                    // Selected row: draw stitched border segments across cells.
+                    // While editing the current cell in SelectRows mode, keep fill only.
+                    bool editingCurrentCell = false;
+                    if (rowSelected && tableView->currentIndex().isValid()
+                        && tableView->currentIndex().row() == vopt->index.row())
+                    {
+                        const QWidget *fw = QApplication::focusWidget();
+                        editingCurrentCell = fw && fw != tableView && tableView->isAncestorOf(fw);
+                    }
+
+                    if (rowSelected && !editingCurrentCell)
+                    {
+                        const auto *model = tableView->model();
+                        const int totalCols = model ? model->columnCount(vopt->index.parent()) : 0;
+                        int firstVisibleCol = 0;
+                        int lastVisibleCol = qMax(0, totalCols - 1);
+                        for (int c = 0; c < totalCols; ++c)
+                        {
+                            if (!tableView->isColumnHidden(c))
+                            {
+                                firstVisibleCol = c;
+                                break;
+                            }
+                        }
+                        for (int c = totalCols - 1; c >= 0; --c)
+                        {
+                            if (!tableView->isColumnHidden(c))
+                            {
+                                lastVisibleCol = c;
+                                break;
+                            }
+                        }
+
+                        QColor border = accent;
+                        border.setAlpha(isDark ? 210 : 190);
+                        PainterStateGuard borderGuard(painter);
+                        painter->setPen(QPen(border, 1));
+                        painter->drawLine(cellRect.topLeft(), cellRect.topRight());
+                        painter->drawLine(cellRect.bottomLeft(), cellRect.bottomRight());
+                        if (vopt->index.column() == firstVisibleCol)
+                        {
+                            painter->drawLine(cellRect.topLeft(), cellRect.bottomLeft());
+                        }
+                        if (vopt->index.column() == lastVisibleCol)
+                        {
+                            painter->drawLine(cellRect.topRight(), cellRect.bottomRight());
+                        }
+                    }
+                    tableCellHighlightHandled = true;
+                }
+            }
+            //ListView
+            else if (highlightCurrent)
             {
                 if (highContrastTheme)
                 {
@@ -6212,9 +6333,10 @@ void FluentUI3Style::drawControl(ControlElement element, const QStyleOption *opt
                 }
                 else
                 {
-                    const QAbstractItemView *view = qobject_cast<const QAbstractItemView *>(widget);
-                    painter->setBrush(view && view->alternatingRowColors() ? vopt->palette.highlight()
-                                                                           : winUI3Color(subtleHighlightColor));
+                    const bool isSelected = (vopt->state & State_Selected) != 0;
+                    const QColor itemHighlight = isSelected ? winUI3Color(subtlePressedColor)
+                                                            : winUI3Color(subtleHighlightColor);
+                    painter->setBrush(itemHighlight);
                 }
             }
             else
@@ -6223,7 +6345,12 @@ void FluentUI3Style::drawControl(ControlElement element, const QStyleOption *opt
             }
             painter->setPen(Qt::NoPen);
 
-            if (onlyOne)
+            // QTableView row strategy: selected/hover painted per-cell above.
+            if (tableRowStrategy && tableCellHighlightHandled)
+            {
+                // no-op
+            }
+            else if (onlyOne)
             {
                 painter->drawRoundedRect(
                     rect.marginsRemoved(QMargins(2, 2, 2, 2)), secondLevelRoundingRadius, secondLevelRoundingRadius);
@@ -6679,9 +6806,6 @@ QSize FluentUI3Style::sizeFromContents(ContentsType type, const QStyleOption *op
         }
         break;
     case CT_HeaderSection:
-        // windows vista does not honor the indicator (as it was drawn above
-        // the text, not on the side) so call QWindowsStyle::styleHint
-        // directly to get the correct size hint
         contentSize = QProxyStyle::sizeFromContents(type, option, size, widget);
         break;
     case CT_RadioButton:
@@ -6923,16 +7047,16 @@ QSize FluentUI3Style::sizeFromContents(ContentsType type, const QStyleOption *op
     case CT_CheckBox:
     case CT_RadioButton:
     case CT_ComboBox:
-        if (contentSize.height() < 32)
+        if (contentSize.height() < 34)
         {
-            contentSize.setHeight(32);
+            contentSize.setHeight(34);
         }
         break;
     case CT_LineEdit:
     case CT_SpinBox:
-        if (contentSize.height() < 32)
+        if (contentSize.height() < 34)
         {
-            contentSize.setHeight(32);
+            contentSize.setHeight(34);
         }
         break;
     default:
@@ -7015,6 +7139,11 @@ int FluentUI3Style::pixelMetric(PixelMetric metric, const QStyleOption *option, 
     case PM_DefaultFrameWidth:
     {
         res = 4;
+        if (qobject_cast<const QTableView *>(widget))
+        {
+            // Keep table header visually flush with outer frame.
+            res = 0;
+        }
         if (qobject_cast<const QListView *>(widget))
         {
             res = 2;
@@ -7169,6 +7298,8 @@ void FluentUI3Style::polish(QWidget *widget)
         if (auto table = qobject_cast<QTableView *>(widget))
         {
             table->viewport()->setAttribute(Qt::WA_Hover, true);
+            table->viewport()->setMouseTracking(true);
+            table->viewport()->installEventFilter(this);
         }
     }
 
@@ -7230,6 +7361,11 @@ void FluentUI3Style::unpolish(QWidget *widget)
     {
         if (treeView->viewport())
             treeView->viewport()->removeEventFilter(this);
+    }
+    if (auto *tableView = qobject_cast<QTableView *>(widget))
+    {
+        if (tableView->viewport())
+            tableView->viewport()->removeEventFilter(this);
     }
 
     if (const auto *scrollarea = qobject_cast<QAbstractScrollArea *>(widget); scrollarea
@@ -7442,13 +7578,13 @@ void FluentUI3Style::drawSwitchButton(const QStyleOption *option, QPainter *pain
     bool enabled = btn->state & State_Enabled;
 
     QRect trackRect = rect.adjusted(0, 0, 0, 0);
-    int radius = trackRect.height() / 2;
-    int margin = 2;
-    int thumbRadius = radius - margin;
+    qreal radius = trackRect.height() / 2;
+    qreal margin = 2.5f;
+    qreal thumbRadius = radius - margin;
 
     float pos = animationValue(option->styleObject, "_q_thumb_pos", (checked ? 1.0f : 0.0f));
     float scale = animationValue(option->styleObject, "_q_thumb_scale", (hovered ? 1.1f : 0.9f));
-    float stretch = pressed ? 1.3f : 1.0f;
+    float stretch = animationValue(option->styleObject, "_q_thumb_stretch", (pressed ? 1.3f : 1.0f));
 
     QColor thumbColor;
 
@@ -7486,24 +7622,22 @@ void FluentUI3Style::drawSwitchButton(const QStyleOption *option, QPainter *pain
     painter->setBrush(controlFillBrush(option, ControlType::ControlAlt));
     painter->drawRoundedRect(trackRect, radius, radius);
 
-    int baseRadius = thumbRadius;
-
-    // 放大后的半径
-    int r = int(baseRadius * scale);
+    const qreal baseRadius = thumbRadius;
+    const qreal r = baseRadius * scale;
 
     // 椭圆尺寸（press 拉伸）
-    int w = int(r * 2 * stretch);
-    int h = int(r * 2);
+    const qreal w = r * 2.0 * stretch;
+    const qreal h = r * 2.0;
 
     // 可移动范围（左右留 margin）
     QRect innerRect = rect.adjusted(margin, margin, -margin, -margin);
-    int minX = innerRect.left();
-    int maxX = innerRect.right() - w + 1;
+    const qreal minX = innerRect.left();
+    const qreal maxX = innerRect.right() - w + 1.0;
 
-    int x = minX + int(pos * (maxX - minX));
-    int y = innerRect.top() + (innerRect.height() - h) / 2;
+    const qreal x = minX + pos * (maxX - minX);
+    const qreal y = innerRect.top() + (innerRect.height() - h) / 2.0;
 
-    QRect thumbRect(x, y, w, h);
+    const QRectF thumbRect(x, y, w, h);
 
     painter->setPen(Qt::NoPen);
     painter->setBrush(thumbColor);
@@ -7842,6 +7976,41 @@ bool FluentUI3Style::eventFilter(QObject *watched, QEvent *event)
     }
     else if (auto *viewport = qobject_cast<QWidget *>(watched))
     {
+        auto *tableView = qobject_cast<QTableView *>(viewport->parent());
+        if (tableView && tableView->viewport() == viewport)
+        {
+            auto updateHoverRow = [&](int newRow)
+            {
+                const int oldRow = viewport->property("_q_table_hover_row").toInt();
+                if (oldRow == newRow)
+                    return;
+                viewport->setProperty("_q_table_hover_row", newRow);
+                viewport->update();
+            };
+
+            if (event->type() == QEvent::MouseMove)
+            {
+                const auto *me = static_cast<QMouseEvent *>(event);
+                const QModelIndex hoverIdx = tableView->indexAt(me->pos());
+                updateHoverRow(hoverIdx.isValid() ? hoverIdx.row() : -1);
+            }
+            else if (event->type() == QEvent::HoverMove)
+            {
+                const auto *he = static_cast<QHoverEvent *>(event);
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+                const QPoint pos = he->position().toPoint();
+#else
+                const QPoint pos = he->pos();
+#endif
+                const QModelIndex hoverIdx = tableView->indexAt(pos);
+                updateHoverRow(hoverIdx.isValid() ? hoverIdx.row() : -1);
+            }
+            else if (event->type() == QEvent::Leave)
+            {
+                updateHoverRow(-1);
+            }
+        }
+
         auto *treeView = qobject_cast<QTreeView *>(viewport->parent());
         if (treeView && treeView->viewport() == viewport &&
             treeView->property(NavigationViewStyleProperty).toBool() &&

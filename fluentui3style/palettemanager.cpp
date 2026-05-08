@@ -43,6 +43,15 @@ void PaletteManager::applyPalette(QPalette &palette, bool isDark) const
         palette.setColor(QPalette::Inactive, QPalette::Accent, c);
         palette.setColor(QPalette::Disabled, QPalette::Accent, c.darker(150));
     }
+
+    // Keep selection semantics aligned with Fluent: Highlight follows Accent.
+    // This avoids hardcoded system blue and automatically tracks theme/app accent.
+    palette.setColor(QPalette::Active, QPalette::Highlight,
+                     palette.color(QPalette::Active, QPalette::Accent));
+    palette.setColor(QPalette::Inactive, QPalette::Highlight,
+                     palette.color(QPalette::Inactive, QPalette::Accent));
+    palette.setColor(QPalette::Disabled, QPalette::Highlight,
+                     palette.color(QPalette::Disabled, QPalette::Accent));
 #endif
 
     // Example项目
@@ -91,7 +100,7 @@ void FluentColorScheme::applyLight(QPalette &p) const
     p.setColor(QPalette::Active, QPalette::Base, QColor(249, 249, 249));
 
     p.setColor(QPalette::Active, QPalette::Shadow, QColor(105, 105, 105, 255));
-    p.setColor(QPalette::Active, QPalette::Highlight, QColor(0, 120, 215, 255));
+    p.setColor(QPalette::Active, QPalette::Highlight, QColor(0, 90, 158, 255));
     p.setColor(QPalette::Active, QPalette::HighlightedText, QColor(255, 255, 255, 255));
     p.setColor(QPalette::Active, QPalette::Link, QColor(0, 66, 117, 255));
     p.setColor(QPalette::Active, QPalette::LinkVisited, QColor(0, 38, 66, 255));
@@ -118,7 +127,7 @@ void FluentColorScheme::applyLight(QPalette &p) const
     p.setColor(QPalette::Disabled, QPalette::Base, QColor(240, 240, 240, 255));
     p.setColor(QPalette::Disabled, QPalette::Window, QColor(240, 240, 240, 255));
     p.setColor(QPalette::Disabled, QPalette::Shadow, QColor(0, 0, 0, 255));
-    p.setColor(QPalette::Disabled, QPalette::Highlight, QColor(0, 120, 215, 255));
+    p.setColor(QPalette::Disabled, QPalette::Highlight, QColor(120, 120, 120, 255));
     p.setColor(QPalette::Disabled, QPalette::HighlightedText, QColor(255, 255, 255, 255));
     p.setColor(QPalette::Disabled, QPalette::Link, QColor(0, 66, 117, 128));
     p.setColor(QPalette::Disabled, QPalette::LinkVisited, QColor(0, 38, 66, 128));
@@ -144,8 +153,8 @@ void FluentColorScheme::applyLight(QPalette &p) const
     p.setColor(QPalette::Inactive, QPalette::Base, QColor(255, 255, 255, 255));
     p.setColor(QPalette::Inactive, QPalette::Window, QColor(/*240,240,240,255*/ 255, 255, 255, 255));
     p.setColor(QPalette::Inactive, QPalette::Shadow, QColor(105, 105, 105, 255));
-    p.setColor(QPalette::Inactive, QPalette::Highlight, QColor(240, 240, 240, 255));
-    p.setColor(QPalette::Inactive, QPalette::HighlightedText, QColor(0, 0, 0, 255));
+    p.setColor(QPalette::Inactive, QPalette::Highlight, QColor(0, 90, 158, 255));
+    p.setColor(QPalette::Inactive, QPalette::HighlightedText, QColor(255, 255, 255, 255));
     p.setColor(QPalette::Inactive, QPalette::Link, QColor(0, 66, 117, 255));
     p.setColor(QPalette::Inactive, QPalette::LinkVisited, QColor(0, 38, 66, 255));
     p.setColor(QPalette::Inactive, QPalette::AlternateBase, QColor(245, 245, 245, 255));
@@ -180,7 +189,7 @@ void FluentColorScheme::applyDark(QPalette &p) const
     p.setColor(QPalette::Active, QPalette::Window, QColor(39, 39, 39, 255));
 
     p.setColor(QPalette::Active, QPalette::Shadow, QColor(0, 0, 0, 255));
-    p.setColor(QPalette::Active, QPalette::Highlight, QColor(0, 120, 215, 255));
+    p.setColor(QPalette::Active, QPalette::Highlight, QColor(54, 166, 255, 255));
     p.setColor(QPalette::Active, QPalette::HighlightedText, QColor(255, 255, 255, 255));
     p.setColor(QPalette::Active, QPalette::Link, QColor(105, 189, 255, 255));
     p.setColor(QPalette::Active, QPalette::LinkVisited, QColor(54, 166, 255, 255));
@@ -207,7 +216,7 @@ void FluentColorScheme::applyDark(QPalette &p) const
     p.setColor(QPalette::Disabled, QPalette::Base, QColor(39, 39, 39, 255));
     p.setColor(QPalette::Disabled, QPalette::Window, QColor(39, 39, 39, 255));
     p.setColor(QPalette::Disabled, QPalette::Shadow, QColor(0, 0, 0, 255));
-    p.setColor(QPalette::Disabled, QPalette::Highlight, QColor(0, 120, 215, 255));
+    p.setColor(QPalette::Disabled, QPalette::Highlight, QColor(90, 90, 90, 255));
     p.setColor(QPalette::Disabled, QPalette::HighlightedText, QColor(255, 255, 255, 255));
     p.setColor(QPalette::Disabled, QPalette::Link, QColor(105, 189, 255, 128));
     p.setColor(QPalette::Disabled, QPalette::LinkVisited, QColor(54, 166, 255, 128));
@@ -233,7 +242,7 @@ void FluentColorScheme::applyDark(QPalette &p) const
     p.setColor(QPalette::Inactive, QPalette::Base, QColor(50, 50, 50, 255));
     p.setColor(QPalette::Inactive, QPalette::Window, QColor(39, 39, 39, 255));
     p.setColor(QPalette::Inactive, QPalette::Shadow, QColor(0, 0, 0, 255));
-    p.setColor(QPalette::Inactive, QPalette::Highlight, QColor(0, 120, 215, 255));
+    p.setColor(QPalette::Inactive, QPalette::Highlight, QColor(54, 166, 255, 255));
     p.setColor(QPalette::Inactive, QPalette::HighlightedText, QColor(255, 255, 255, 255));
     p.setColor(QPalette::Inactive, QPalette::Link, QColor(105, 189, 255, 255));
     p.setColor(QPalette::Inactive, QPalette::LinkVisited, QColor(54, 166, 255, 255));
