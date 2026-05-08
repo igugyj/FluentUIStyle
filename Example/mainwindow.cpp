@@ -1736,8 +1736,6 @@ void applyStandardMenuIcons(QMenu *menu, QWidget *widget)
             continue;
         }
 
-        action->setFont(menuFont);
-
         if (QMenu *subMenu = action->menu())
         {
             applyStandardMenuIcons(subMenu, widget);
