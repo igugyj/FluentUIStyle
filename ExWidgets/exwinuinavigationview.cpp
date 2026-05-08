@@ -1,6 +1,7 @@
 #include "exwinuinavigationview.h"
 
 #include "exnavtreewidget.h"
+#include "exstackedwidget.h"
 
 #include <QFont>
 #include <QFrame>
@@ -13,6 +14,20 @@
 namespace
 {
 constexpr int NavigationPageRole = Qt::UserRole;
+
+static void setPageIndexWithAnimation(QStackedWidget *stackedWidget, int pageIndex)
+{
+    if (!stackedWidget)
+        return;
+
+    if (ExStackedWidget *exStack = qobject_cast<ExStackedWidget *>(stackedWidget))
+    {
+        exStack->setCurrentIndex(pageIndex);
+        return;
+    }
+
+    stackedWidget->setCurrentIndex(pageIndex);
+}
 }
 
 class ExWinUINavigationViewPrivate
@@ -93,8 +108,7 @@ ExWinUINavigationView::ExWinUINavigationView(QWidget *parent)
             this,
             [this, d](int pageIndex)
             {
-                if (d->stackedWidget)
-                    d->stackedWidget->setCurrentIndex(pageIndex);
+                setPageIndexWithAnimation(d->stackedWidget, pageIndex);
                 emit pageIndexChanged(pageIndex);
             });
     connect(d->footerNav,
@@ -102,8 +116,7 @@ ExWinUINavigationView::ExWinUINavigationView(QWidget *parent)
             this,
             [this, d](int pageIndex)
             {
-                if (d->stackedWidget)
-                    d->stackedWidget->setCurrentIndex(pageIndex);
+                setPageIndexWithAnimation(d->stackedWidget, pageIndex);
                 emit pageIndexChanged(pageIndex);
             });
 }
@@ -126,8 +139,7 @@ void ExWinUINavigationView::setStackedWidget(QStackedWidget *stack)
 {
     Q_D(ExWinUINavigationView);
     d->stackedWidget = stack;
-    if (d->stackedWidget)
-        d->stackedWidget->setCurrentIndex(selectedPageIndex());
+    setPageIndexWithAnimation(d->stackedWidget, selectedPageIndex());
 }
 
 QStackedWidget *ExWinUINavigationView::stackedWidget() const

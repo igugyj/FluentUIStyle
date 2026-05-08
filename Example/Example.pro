@@ -14,10 +14,17 @@ INCLUDEPATH += $$PWD/../FluentUI3Style
 DEFINES += FLUENT_USE_QT_STYLE
 
 SOURCES += main.cpp \
-           mainwindow.cpp
-HEADERS += mainwindow.h
+           mainwindow.cpp \
+           font-icon/fonticon.cpp \
+           aboutprojectwidget.cpp \
+           segoeicongallerywidget.cpp
+HEADERS += mainwindow.h \
+           font-icon/fonticon.h \
+           aboutprojectwidget.h \
+           segoeicongallerywidget.h
 FORMS   += mainwindow.ui
-RESOURCES += resources.qrc
+RESOURCES += resources.qrc \
+             font-icon/resource.qrc
 RC_ICONS = appicon.ico
 
 win32-msvc {

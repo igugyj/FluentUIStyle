@@ -14,7 +14,8 @@ FontIcon::FontIcon()
 
 void FontIcon::init()
 {
-    QStringList systemFamilies = QFontDatabase::families();
+    QFontDatabase fontDB;
+    QStringList systemFamilies = fontDB.families();
     // Win11系统默认包含Segoe Fluent Icons
     if ( !systemFamilies.contains( SegoeFontName ) )
     {

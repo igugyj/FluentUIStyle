@@ -35,6 +35,8 @@
 #include <QMouseEvent>
 #include <QtMath>
 #include <QtGlobal>
+#include <QDialogButtonBox>
+#include <QMessageBox>
 
 #include <array>
 
@@ -2841,6 +2843,21 @@ void FluentUI3Style::drawPrimitive(PrimitiveElement element, const QStyleOption 
         break;
     case PE_Widget:
     {
+#if QT_CONFIG(dialogbuttonbox)
+        const QDialogButtonBox *buttonBox = nullptr;
+        if (qobject_cast<const QMessageBox *> (widget))
+            buttonBox = widget->findChild<const QDialogButtonBox *>(QLatin1String("qt_msgbox_buttonbox"));
+
+        if (buttonBox) {
+            QRect toprect = option->rect;
+            toprect.setBottom(buttonBox->geometry().top());
+            painter->fillRect(toprect, option->palette.brush(QPalette::Base));
+
+            QRect buttonRect = option->rect;
+            buttonRect.setTop(buttonBox->geometry().top());
+            painter->fillRect(buttonRect, option->palette.brush(QPalette::Window));
+        }
+#endif
         if (widget && widget->property("isCard").toBool())
         {
             painter->save();
@@ -3536,6 +3553,12 @@ void FluentUI3Style::drawCapsuleTab(const QStyleOptionTab *tab, QPainter *painte
 
         QPainterPath path = buildRoundedPolyline(pts, radius);
         painter->fillPath(path, painter->brush());
+
+        QRectF indicatorRect(tabRect.x() + 7.f, tabRect.y() + 7.0f, 2, tabRect.height() - 14.0f);
+        const QColor col = accentColor(tab);
+        painter->setBrush(col);
+        painter->setPen(col);
+        painter->drawRoundedRect(indicatorRect, 1.0, 1.0);
     }
     else if (tab->state & State_MouseOver)
     {
@@ -5510,6 +5533,8 @@ void FluentUI3Style::drawControl(ControlElement element, const QStyleOption *opt
             {
                 if (baropt->state & QStyle::State_Horizontal)
                 {
+                    rect.setLeft(rect.left() + 2);
+                    rect.setWidth(qMax(0.0, rect.width() - 2.0));
                     rect.setHeight(ProgressBarThickness);
                     rect.moveTop(center.y() - rect.height() / 2.0);
                 }
@@ -5527,6 +5552,8 @@ void FluentUI3Style::drawControl(ControlElement element, const QStyleOption *opt
             {
                 if (baropt->state & QStyle::State_Horizontal)
                 {
+                    rect.setLeft(rect.left() + 2);
+                    rect.setWidth(qMax(0.0, rect.width() - 2.0));
                     rect.setHeight(1);
                     rect.moveTop(center.y() - 0.5);
                 }
@@ -5556,8 +5583,13 @@ void FluentUI3Style::drawControl(ControlElement element, const QStyleOption *opt
             QRectF rect = option->rect;
             painter->translate(rect.topLeft());
             rect.translate(-rect.topLeft());
-            const auto isIndeterminate = baropt->maximum == 0 && baropt->minimum == 0;
             const auto orientation = (baropt->state & QStyle::State_Horizontal) ? Qt::Horizontal : Qt::Vertical;
+            if (orientation == Qt::Horizontal)
+            {
+                rect.setLeft(rect.left() + 2);
+                rect.setWidth(qMax(0.0, rect.width() - 2.0));
+            }
+            const auto isIndeterminate = baropt->maximum == 0 && baropt->minimum == 0;
             const auto inverted = baropt->invertedAppearance;
             const auto reverse = (baropt->direction == Qt::RightToLeft) ^ inverted;
             // If the orientation is vertical, we use a transform to rotate
@@ -5621,6 +5653,18 @@ void FluentUI3Style::drawControl(ControlElement element, const QStyleOption *opt
             const qreal progressBarHalfThickness = progressBarThickness / 2.0;
             rect.setHeight(progressBarThickness);
             rect.moveTop(center.y() - progressBarHalfThickness - offset);
+            if (progressBarThickness > 1.0)
+            {
+                // Keep rounded caps inside clip bounds to avoid left-edge clipping.
+                if (orientation == Qt::Horizontal && rect.width() > 1.0)
+                {
+                    rect.adjust(0.5, 0.0, -0.5, 0.0);
+                }
+                else if (orientation == Qt::Vertical && rect.height() > 1.0)
+                {
+                    rect.adjust(0.0, 0.5, 0.0, -0.5);
+                }
+            }
 
             painter->setPen(Qt::NoPen);
             painter->setBrush(accentColor(baropt));

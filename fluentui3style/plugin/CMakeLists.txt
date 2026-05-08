@@ -1,6 +1,7 @@
 set(PLUGIN_SOURCES
     ../fluentui3style.cpp
     ../fluentui3style.h
+    ../fluentui3styleproperties.h
     ../fluentui3colors.cpp
     ../fluentui3colors.h
     ../fluentuiappearance.cpp
@@ -67,7 +68,12 @@ execute_process(COMMAND ${QMAKE_EXEC} -query QT_INSTALL_PLUGINS
     OUTPUT_VARIABLE QT_PLUGINS_DIR
     OUTPUT_STRIP_TRAILING_WHITESPACE
 )
+execute_process(COMMAND ${QMAKE_EXEC} -query QT_INSTALL_HEADERS
+    OUTPUT_VARIABLE QT_HEADERS_DIR
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+)
 set(QT_STYLE_PLUGINS_DIR "${QT_PLUGINS_DIR}/styles")
+set(QT_FLUENT_HEADERS_DIR "${QT_HEADERS_DIR}/FluentUI3Style")
 
 add_custom_command(TARGET FluentUI3StylePlugin POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory "${QT_STYLE_PLUGINS_DIR}"
@@ -79,6 +85,11 @@ if(MSVC)
         COMMAND cmd /c "if exist \"$<TARGET_PDB_FILE:FluentUI3StylePlugin>\" \"${CMAKE_COMMAND}\" -E copy \"$<TARGET_PDB_FILE:FluentUI3StylePlugin>\" \"${QT_STYLE_PLUGINS_DIR}\""
     )
 endif()
+add_custom_command(TARGET FluentUI3StylePlugin POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${QT_FLUENT_HEADERS_DIR}"
+    COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_SOURCE_DIR}/../fluentui3styleproperties.h" "${QT_FLUENT_HEADERS_DIR}"
+    COMMAND ${CMAKE_COMMAND} -E echo "Header copied to ${QT_FLUENT_HEADERS_DIR}."
+)
 add_custom_command(TARGET FluentUI3StylePlugin POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E echo "Success! Plugin copied to Qt dir."
 )

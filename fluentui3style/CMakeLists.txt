@@ -1,5 +1,6 @@
 set(LIBRARY_SOURCES
     fluentui3style_global.h
+    fluentui3styleproperties.h
     fluentui3style.cpp
     fluentui3style.h
     fluentui3colors.cpp

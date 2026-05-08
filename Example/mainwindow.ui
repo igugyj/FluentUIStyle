@@ -13,7 +13,6 @@
   <property name="font">
    <font>
     <family>微软雅黑</family>
-    <hintingpreference>PreferNoHinting</hintingpreference>
    </font>
   </property>
   <property name="windowTitle">
@@ -134,7 +133,7 @@
                       <family>微软雅黑</family>
                       <pointsize>10</pointsize>
                       <bold>false</bold>
-                      <hintingpreference>PreferNoHinting</hintingpreference>
+
                      </font>
                     </property>
                     <property name="text">
@@ -188,7 +187,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
                       <family>微软雅黑</family>
                       <pointsize>10</pointsize>
                       <bold>false</bold>
-                      <hintingpreference>PreferNoHinting</hintingpreference>
+
                      </font>
                     </property>
                     <property name="text">
@@ -409,7 +408,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
                        <font>
                         <family>微软雅黑</family>
                         <pointsize>9</pointsize>
-                        <hintingpreference>PreferNoHinting</hintingpreference>
+
                        </font>
                       </property>
                       <property name="singleStep">
@@ -445,7 +444,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
                       <family>微软雅黑</family>
                       <pointsize>10</pointsize>
                       <bold>false</bold>
-                      <hintingpreference>PreferNoHinting</hintingpreference>
+
                      </font>
                     </property>
                     <property name="text">
@@ -473,7 +472,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
                       <family>微软雅黑</family>
                       <pointsize>10</pointsize>
                       <bold>false</bold>
-                      <hintingpreference>PreferNoHinting</hintingpreference>
+
                      </font>
                     </property>
                     <property name="text">
@@ -553,7 +552,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
                       <family>微软雅黑</family>
                       <pointsize>10</pointsize>
                       <bold>false</bold>
-                      <hintingpreference>PreferNoHinting</hintingpreference>
+
                      </font>
                     </property>
                     <property name="text">
@@ -606,7 +605,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
                       <family>微软雅黑</family>
                       <pointsize>10</pointsize>
                       <bold>false</bold>
-                      <hintingpreference>PreferNoHinting</hintingpreference>
+
                      </font>
                     </property>
                     <property name="text">
@@ -657,7 +656,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
                       <family>微软雅黑</family>
                       <pointsize>10</pointsize>
                       <bold>false</bold>
-                      <hintingpreference>PreferNoHinting</hintingpreference>
+
                      </font>
                     </property>
                     <property name="text">
@@ -706,7 +705,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
                       <family>微软雅黑</family>
                       <pointsize>10</pointsize>
                       <bold>false</bold>
-                      <hintingpreference>PreferNoHinting</hintingpreference>
+
                      </font>
                     </property>
                     <property name="text">
@@ -791,7 +790,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
                       <family>微软雅黑</family>
                       <pointsize>10</pointsize>
                       <bold>false</bold>
-                      <hintingpreference>PreferNoHinting</hintingpreference>
+
                      </font>
                     </property>
                     <property name="text">
@@ -850,7 +849,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
                       <family>微软雅黑</family>
                       <pointsize>10</pointsize>
                       <bold>false</bold>
-                      <hintingpreference>PreferNoHinting</hintingpreference>
+
                      </font>
                     </property>
                     <property name="text">
@@ -907,7 +906,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
                       <family>微软雅黑</family>
                       <pointsize>10</pointsize>
                       <bold>false</bold>
-                      <hintingpreference>PreferNoHinting</hintingpreference>
+
                      </font>
                     </property>
                     <property name="text">
@@ -1078,7 +1077,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
                       <family>微软雅黑</family>
                       <pointsize>10</pointsize>
                       <bold>false</bold>
-                      <hintingpreference>PreferNoHinting</hintingpreference>
+
                      </font>
                     </property>
                     <property name="text">
@@ -1157,7 +1156,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
                       <family>微软雅黑</family>
                       <pointsize>10</pointsize>
                       <bold>false</bold>
-                      <hintingpreference>PreferNoHinting</hintingpreference>
+
                      </font>
                     </property>
                     <property name="text">
@@ -1232,7 +1231,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
                    <family>微软雅黑</family>
                    <pointsize>18</pointsize>
                    <bold>true</bold>
-                   <hintingpreference>PreferNoHinting</hintingpreference>
+
                   </font>
                  </property>
                  <property name="text">
@@ -1279,7 +1278,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
                <family>微软雅黑</family>
                <pointsize>18</pointsize>
                <bold>true</bold>
-               <hintingpreference>PreferNoHinting</hintingpreference>
+
               </font>
              </property>
              <property name="text">
@@ -1292,7 +1291,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
              <property name="font">
               <font>
                <family>微软雅黑</family>
-               <hintingpreference>PreferNoHinting</hintingpreference>
+
               </font>
              </property>
              <property name="selectionBehavior">
@@ -1448,7 +1447,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
                <family>微软雅黑</family>
                <pointsize>18</pointsize>
                <bold>true</bold>
-               <hintingpreference>PreferNoHinting</hintingpreference>
+
               </font>
              </property>
              <property name="text">
@@ -1565,7 +1564,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
                <pointsize>18</pointsize>
                <italic>false</italic>
                <bold>true</bold>
-               <hintingpreference>PreferNoHinting</hintingpreference>
+
               </font>
              </property>
              <property name="text">
@@ -1737,7 +1736,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
                 <pointsize>10</pointsize>
                 <bold>false</bold>
                 <stylestrategy>PreferAntialias</stylestrategy>
-                <hintingpreference>PreferNoHinting</hintingpreference>
+
                </font>
               </property>
               <property name="text">
@@ -1761,7 +1760,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
                   <pointsize>10</pointsize>
                   <bold>false</bold>
                   <stylestrategy>PreferAntialias</stylestrategy>
-                  <hintingpreference>PreferNoHinting</hintingpreference>
+
                  </font>
                 </property>
                 <property name="text">
@@ -1810,7 +1809,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
                   <pointsize>10</pointsize>
                   <bold>false</bold>
                   <stylestrategy>PreferAntialias</stylestrategy>
-                  <hintingpreference>PreferNoHinting</hintingpreference>
+
                  </font>
                 </property>
                 <property name="text">
@@ -1859,7 +1858,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
                   <pointsize>10</pointsize>
                   <bold>false</bold>
                   <stylestrategy>PreferAntialias</stylestrategy>
-                  <hintingpreference>PreferNoHinting</hintingpreference>
+
                  </font>
                 </property>
                 <property name="text">

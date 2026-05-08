@@ -4,6 +4,7 @@ DEFINES += FLUENTUI3STYLE_LIBRARY
 
 HEADERS += \
     $$PWD/fluentui3style.h \
+    $$PWD/fluentui3styleproperties.h \
     $$PWD/fluentuiappearance.h \
     $$PWD/palettemanager.h \
     $$PWD/qhexstring_p.h \

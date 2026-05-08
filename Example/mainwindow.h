@@ -73,6 +73,8 @@ private:
     void setupButtonsAndIcons();
     void setupAccentColorWidget();
     void setupMdiArea();
+    void setupSegoeIconGalleryPage();
+    void setupAboutPage();
 
     void updateActionIcons();
     void loadChangelog();

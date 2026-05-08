@@ -86,6 +86,10 @@
 #include <extabwidget.h>
 #include <exnavtreewidget.h>
 #include <exwinuinavigationview.h>
+#include "font-icon/fonticon.h"
+#include "segoeicongallerywidget.h"
+#include "aboutprojectwidget.h"
+#include "../FluentUI3Style/fluentui3styleproperties.h"
 
 #ifndef FLUENT_USE_QT_STYLE
 #include <fluentui3style.h>
@@ -125,6 +129,7 @@ struct InstalledSoftwareInfo
     QString quietUninstallString;
     QString installLocation;
 };
+
 
 static QString formatInstallDate(const QString &rawDate)
 {
@@ -592,6 +597,9 @@ void MainWindow::initializeComponents()
     ui->lineEditSerach->setClearButtonEnabled(true);
     m_searchAction = ui->lineEditSerach->addAction(createFluentIcon("\ue721"), QLineEdit::TrailingPosition);
 
+    setupSegoeIconGalleryPage();
+    setupAboutPage();
+
     // Configure stacked widget
     ui->stackedWidget->setVerticalMode(true);
     ui->stackedWidget->setAnimation(QEasingCurve::Type::InOutSine);
@@ -615,8 +623,8 @@ void MainWindow::initializeComponents()
     m_toolBar->setAutoFillBackground(false);
 
     // Configure control properties
-    ui->progressBar->setProperty("progressBarStyle", 1);
-    ui->spinBox->setProperty("spinBoxButtonLayout", 0);
+    ui->progressBar->setProperty(ProgressBarStyleProperty, ProgressBarThick);
+    ui->spinBox->setProperty("spinBoxButtonLayout", ArrowsHorizontalRight);
     ui->checkBox_5->setText("Off");
     ui->treeWidget->setProperty("ItemHeight", 32);
     ui->treeWidget->setIndentation(20);
@@ -1012,7 +1020,7 @@ void MainWindow::setupWidgetBackgroundSelector(QToolBar *toolBar)
     toolBar->addWidget(widgetBgLabel);
 
     m_tabBarWidgetBg = new QTabBar();
-    m_tabBarWidgetBg->setProperty("tabBarStyle", 9);
+    m_tabBarWidgetBg->setProperty(TabBarStyleProperty, Segmented_WinUI3);
     m_tabBarWidgetBg->addTab("None");
     m_tabBarWidgetBg->addTab("图片");
 
@@ -1060,9 +1068,10 @@ void MainWindow::initializeNavigationView()
     m_winUINavigationView->addNavigationItem("树形控件", 3, "\uED28");
     m_winUINavigationView->addNavigationItem("导航控件", 4, "\uE8B0");
     m_winUINavigationView->addNavigationItem("Mdi", 5, "\uE9D9");
+    m_winUINavigationView->addNavigationItem("图标库", 7, "\uE8FD");
     addTestNavigationTree();
 
-    m_winUINavigationView->addFooterNavigationItem("关于", 0, "\uE77B");
+    m_winUINavigationView->addFooterNavigationItem("关于", 8, "\uE77B");
     if (QTreeWidgetItem *settingsItem = m_winUINavigationView->addFooterNavigationItem("设置", 6, "\uE713"))
     {
         settingsItem->setData(0, Qt::UserRole + 1001, true);
@@ -1212,13 +1221,13 @@ void MainWindow::setupPivotTabs(QVBoxLayout *mainLayout)
     QVBoxLayout *pivotLayout = static_cast<QVBoxLayout *>(pivotWidget->layout());
 
     // Pivot Grow
-    addTabBarSection(pivotLayout, "Pivot Grow TabBar", "特点：选中时会有一个生长动画效果。", 2);
+    addTabBarSection(pivotLayout, "Pivot Grow TabBar", "特点：选中时会有一个生长动画效果。", Pivot_Grow);
 
     // Pivot Slide
-    addTabBarSection(pivotLayout, "Pivot Slide TabBar", "特点：选中时会有一个滑动动画效果。", 3);
+    addTabBarSection(pivotLayout, "Pivot Slide TabBar", "特点：选中时会有一个滑动动画效果。", Pivot_Slide);
 
     // Pivot Stretch
-    addTabBarSection(pivotLayout, "Pivot Stretch TabBar", "特点：选中时会有一个拉伸动画效果。", 4);
+    addTabBarSection(pivotLayout, "Pivot Stretch TabBar", "特点：选中时会有一个拉伸动画效果。", Pivot_Stretch);
 
     pivotLayout->addStretch();
     mainLayout->addWidget(pivotWidget, 1);
@@ -1230,16 +1239,16 @@ void MainWindow::setupSegmentedTabs(QVBoxLayout *mainLayout)
     QVBoxLayout *segmentedLayout = static_cast<QVBoxLayout *>(segmentedWidget->layout());
 
     // Segmented Slide
-    addTabBarSection(segmentedLayout, "Segmented Slide TabBar", "特点：Segmented风格，选中时会有一个滑动动画效果。", 6, &m_segmentedBar);
+    addTabBarSection(segmentedLayout, "Segmented Slide TabBar", "特点：Segmented风格，选中时会有一个滑动动画效果。", Segmented_Slide, &m_segmentedBar);
 
     // Segmented Fade
-    addTabBarSection(segmentedLayout, "Segmented Fade TabBar", "特点：选中时会有一个淡入淡出动画效果。", 7, &m_segmentedFadeBar);
+    addTabBarSection(segmentedLayout, "Segmented Fade TabBar", "特点：选中时会有一个淡入淡出动画效果。", Segmented_Fade, &m_segmentedFadeBar);
 
     // Segmented WinUI3
     addTabBarSection(segmentedLayout,
                       "Segmented WinUI3 TabBar",
                       "特点：Segmented风格，使用更接近 WinUI3 的选中指示器效果。",
-                      9,
+                      Segmented_WinUI3,
                       &m_winui3Bar);
 
     segmentedLayout->addStretch();
@@ -1258,7 +1267,7 @@ void MainWindow::setupPillTabs(QVBoxLayout *mainLayout)
     QTabBar *pillBar = new QTabBar();
     pillBar->setTabsClosable(true);
     pillBar->setExpanding(false);
-    pillBar->setProperty("tabBarStyle", 5);
+    pillBar->setProperty(TabBarStyleProperty, PillTabs);
     pillBar->addTab("Home");
     pillBar->addTab("Search");
     pillBar->addTab("Settings");
@@ -1292,7 +1301,7 @@ void MainWindow::setupCapsuleTabs(QVBoxLayout *mainLayout)
     capTabBar->setAutoFillBackground(false);
     capTabBar->setExpanding(false);
     capTabBar->setProperty("TextAlign", static_cast<int>(Qt::AlignVCenter | Qt::AlignLeft));
-    capTabBar->setProperty("tabBarStyle", 1);
+    capTabBar->setProperty(TabBarStyleProperty, Capsule);
     capTabBar->setDrawBase(false);
 
     const QStringList pageNames = {"Home", "Search", "Settings", "Help", "About"};
@@ -1342,7 +1351,7 @@ void MainWindow::setupNavigationTabs(QVBoxLayout *mainLayout)
     m_navigationTabWidget->setMovable(false);
     navTabBar->setExpanding(false);
     navTabBar->setProperty("TextAlign", static_cast<int>(Qt::AlignVCenter | Qt::AlignLeft));
-    navTabBar->setProperty("tabBarStyle", 8);
+    navTabBar->setProperty(TabBarStyleProperty, Navigation);
 
     const QStringList navFullNames = {"Overview Page", "Files Page", "History Page", "Insights Page", "Settings Page"};
     const QStringList navNames = {"Overview", "Files", "History", "Insights", "Settings"};
@@ -1395,7 +1404,7 @@ void MainWindow::addTabBarSection(QVBoxLayout *layout,
 
     QTabBar *tabBar = new QTabBar();
     tabBar->setExpanding(false);
-    tabBar->setProperty("tabBarStyle", tabStyle);
+    tabBar->setProperty(TabBarStyleProperty, tabStyle);
     tabBar->addTab("Home");
     tabBar->addTab("Search");
     tabBar->addTab("Settings");
@@ -1483,6 +1492,30 @@ void MainWindow::setupMdiArea()
     QVBoxLayout *layout = new QVBoxLayout(ui->page_5);
     layout->addWidget(switchViewBtn);
     layout->addWidget(mdiArea);
+}
+
+void MainWindow::setupSegoeIconGalleryPage()
+{
+    if (!ui->stackedWidget)
+    {
+        return;
+    }
+
+    SegoeIconGalleryWidget *galleryWidget = new SegoeIconGalleryWidget(ui->stackedWidget);
+    galleryWidget->setObjectName(QStringLiteral("pageSegoeIconGallery"));
+    ui->stackedWidget->addWidget(galleryWidget);
+}
+
+void MainWindow::setupAboutPage()
+{
+    if (!ui->stackedWidget)
+    {
+        return;
+    }
+
+    AboutProjectWidget *aboutPage = new AboutProjectWidget(ui->stackedWidget);
+    aboutPage->setObjectName(QStringLiteral("pageAboutProject"));
+    ui->stackedWidget->addWidget(aboutPage);
 }
 
 //=============================================================================
@@ -1656,14 +1689,6 @@ void MainWindow::loadChangelog()
     }
 }
 
-enum class SpinBoxButtonStyle
-{
-    ArrowsVertical = 0,
-    ArrowsHorizontalSides = 1,
-    ArrowsHorizontalRight = 2,
-    PlusMinusHorizontalSides = 3
-};
-
 void MainWindow::on_checkBox_4_clicked(bool checked)
 {
     QList<QCheckBox *> checkBoxList;
@@ -1681,25 +1706,25 @@ void MainWindow::on_checkBox_5_stateChanged(int state)
 
 void MainWindow::on_radioButton_7_clicked()
 {
-    ui->spinBox->setProperty("spinBoxButtonLayout", static_cast<int>(SpinBoxButtonStyle::ArrowsVertical));
+    ui->spinBox->setProperty("spinBoxButtonLayout", ArrowsVertical);
     ui->spinBox->setFrame(ui->spinBox->hasFrame());
 }
 
 void MainWindow::on_radioButton_4_clicked()
 {
-    ui->spinBox->setProperty("spinBoxButtonLayout", static_cast<int>(SpinBoxButtonStyle::ArrowsHorizontalSides));
+    ui->spinBox->setProperty("spinBoxButtonLayout", ArrowsHorizontalSides);
     ui->spinBox->setFrame(ui->spinBox->hasFrame());
 }
 
 void MainWindow::on_radioButton_5_clicked()
 {
-    ui->spinBox->setProperty("spinBoxButtonLayout", static_cast<int>(SpinBoxButtonStyle::ArrowsHorizontalRight));
+    ui->spinBox->setProperty("spinBoxButtonLayout", ArrowsHorizontalRight);
     ui->spinBox->setFrame(ui->spinBox->hasFrame());
 }
 
 void MainWindow::on_radioButton_6_clicked()
 {
-    ui->spinBox->setProperty("spinBoxButtonLayout", static_cast<int>(SpinBoxButtonStyle::PlusMinusHorizontalSides));
+    ui->spinBox->setProperty("spinBoxButtonLayout", PlusMinusHorizontalSides);
     ui->spinBox->setFrame(ui->spinBox->hasFrame());
 }
 

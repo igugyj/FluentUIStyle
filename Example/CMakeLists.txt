@@ -3,6 +3,13 @@ set(EXAMPLE_SOURCES
     mainwindow.cpp
     mainwindow.h
     mainwindow.ui
+    aboutprojectwidget.cpp
+    aboutprojectwidget.h
+    segoeicongallerywidget.cpp
+    segoeicongallerywidget.h
+    font-icon/fonticon.cpp
+    font-icon/fonticon.h
+    font-icon/resource.qrc
     resources.qrc
     appicon.rc
     appicon.ico
