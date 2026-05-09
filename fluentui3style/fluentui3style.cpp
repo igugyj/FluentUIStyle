@@ -1,6 +1,7 @@
 #include "fluentui3style.h"
 
 #include <QApplication>
+#include <QCoreApplication>
 #include <QBitmap>
 #include <QComboBox>
 #include <QCommandLinkButton>
@@ -53,6 +54,8 @@
 #include "qstyleanimation_p.h"
 #include "qstylehelper_p.h"
 #include "qstyleoption.h"
+
+#include "fluentui3styleproperties.h"
 
 #if QT_VERSION <= QT_VERSION_CHECK(6, 8, 0)
 #include "fluentuiappearance.h"
@@ -720,7 +723,6 @@ static void drawArrow(const QStyle *style,
 
 #endif // QT_CONFIG(toolbutton)
 
-/// 颜色线性插值前向声明（实现见文件末部）
 QColor blend(const QColor &fg, const QColor &bg, double alpha);
 
 //------------------单动画-------------------------------//
@@ -1263,13 +1265,19 @@ inline bool isWin11()
 inline int getColorSchemeIndex() // 0 = Light, 1 = Dark
 {
 #ifdef FLUENT_USE_QT_STYLE
-    bool ok = false;
-    int colorScheme = qApp->property("_q_colorscheme").toInt(&ok);
-    if (ok)
+    QVariant colorScheme = qApp->property("_q_colorscheme");
+    if (colorScheme.isValid())
     {
-        return colorScheme;
+        qDebug()<< "[FluentUI3Style] Get _q_colorscheme:" << colorScheme.toInt();
+        return colorScheme.toInt();
     }
+    //如果没有设置，则根据系统主题色返回
+    #if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
+    qDebug()<< "[FluentUI3Style] No set _q_colorscheme, use system theme color" << qApp->styleHints()->colorScheme();
+    return qApp->styleHints()->colorScheme() == Qt::ColorScheme::Dark ? 1 : 0;
+    #else
     return 0;
+    #endif
 #else
     return (int)fluentUIAppearance.theme();
 #endif
@@ -1323,7 +1331,7 @@ FluentUI3Style::FluentUI3Style(QStyle *style)
 
     if (assetFont.family().isEmpty())
     {
-        qWarning() << "Failed to load Segoe Fluent Icons font from resource. Falling back to system font.";
+        qWarning() << "[FluentUI3Style] Failed to load Segoe Fluent Icons font from resource. Falling back to system font.";
         assetFont = QFont(QStringLiteral("Segoe Fluent Icons"));
     }
     assetFont.setStyleStrategy(QFont::NoFontMerging);
@@ -1339,12 +1347,12 @@ FluentUI3Style::FluentUI3Style(QStyle *style)
         PaletteManager::instance().setThemeStyle((ThemeStyle)themeStyle);
     }
 #endif
-    qDebug() << "FluentUI color scheme index:" << colorSchemeIndex;
+    qDebug() << "[FluentUI3Style] color scheme index:" << colorSchemeIndex;
 }
 
 FluentUI3Style::~FluentUI3Style()
 {
-    qDebug() << "FluentUI3Style destroyed";
+    qDebug() << "[FluentUI3Style] destroyed";
 }
 
 void FluentUI3Style::drawComplexControl(ComplexControl control,
@@ -7220,7 +7228,13 @@ int FluentUI3Style::pixelMetric(PixelMetric metric, const QStyleOption *option, 
 
 void FluentUI3Style::polish(QPalette &result)
 {
+    colorSchemeIndex = getColorSchemeIndex();
     PaletteManager::instance().applyPalette(result, colorSchemeIndex);
+}
+
+void FluentUI3Style::polish(QApplication *app)
+{
+    QProxyStyle::polish(app);
 }
 
 void FluentUI3Style::polish(QWidget *widget)
@@ -7436,6 +7450,11 @@ void FluentUI3Style::unpolish(QWidget *widget)
             treeView->setProperty("_q_branch_anim_ctx", QVariant());
         }
     }
+}
+
+void FluentUI3Style::unpolish(QApplication *app)
+{
+    QProxyStyle::unpolish(app);
 }
 
 // void FluentUI3Style::unpolish( QWidget* widget )

@@ -11,7 +11,6 @@
 #include <QTabBar>
 
 #include "fluentui3colors.h"
-#include "fluentui3styleproperties.h"
 
 enum class ControlType
 {
@@ -59,9 +58,12 @@ public:
 
     int pixelMetric(PixelMetric metric, const QStyleOption *option = nullptr, const QWidget *widget = nullptr) const override;
 
-    void polish(QPalette &result) override;
     void polish(QWidget *widget) override;
+    void polish(QPalette &pal) override;
+    void polish(QApplication *app) override;
+
     void unpolish(QWidget *widget) override;
+    void unpolish(QApplication *app) override;
 
     QIcon standardIcon(StandardPixmap sp, const QStyleOption *option, const QWidget *widget) const override;
     QPalette standardPalette() const override;
@@ -114,7 +116,7 @@ private:
 private:
     mutable QFont assetFont;
     bool highContrastTheme;
-    int colorSchemeIndex = 0;
+    mutable int colorSchemeIndex = 0;
 };
 
 #endif // FLUENTUI3STYLE_H

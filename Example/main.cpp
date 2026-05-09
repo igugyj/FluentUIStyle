@@ -48,7 +48,6 @@ int main(int argc, char *argv[])
     fluentUIAppearance.initialize();
 #endif
 
-    //需要图片背景，配合示例中实现的逻辑，先setStyle，在new QWidget
     MainWindow w;
     w.show();
 

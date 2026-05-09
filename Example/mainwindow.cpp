@@ -944,7 +944,7 @@ void MainWindow::setupThemeSelector(QToolBar *toolBar)
                 qApp->setProperty("_q_colorscheme", index);
                 qApp->setStyle("FluentUI3");
 #else
-            fluentUIAppearance.setTheme(index == 0 ? Theme::Light : Theme::Dark);
+                fluentUIAppearance.setTheme(index == 0 ? Theme::Light : Theme::Dark);
 #endif
                 updateActionIcons();
 
@@ -1120,7 +1120,7 @@ void MainWindow::initializeTableView()
             << "来源";
     table->setHorizontalHeaderLabels(headers);
 
-    
+
     table->verticalHeader()->setMinimumSectionSize(50);
     table->verticalHeader()->setDefaultSectionSize(50);
     table->setSelectionMode(QAbstractItemView::ExtendedSelection);

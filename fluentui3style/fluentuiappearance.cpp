@@ -72,7 +72,6 @@ void FluentUIAppearancePrivate::applyTheme()
     qApp->styleHints()->setColorScheme(theme == Theme::Dark ? Qt::ColorScheme::Dark : Qt::ColorScheme::Light);
 #endif
     qApp->setStyle(new FluentUI3Style());
-    // qApp->setStyle("windows11");
     updateTitleBar();
 }
 
