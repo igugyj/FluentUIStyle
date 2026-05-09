@@ -90,6 +90,84 @@ void TabShowcaseWidget::setupSegmentedTabs(QVBoxLayout *mainLayout)
                      Segmented_WinUI3,
                      &m_winui3Bar);
 
+    QLabel *customLabel = new QLabel("Segmented Gallery Style");
+    applySectionHeadingFont(customLabel, 14);
+    segmentedLayout->addWidget(customLabel);
+    QLabel *customDesc = new QLabel("特点：半圆胶囊 + 自定义背景/选中/悬停/按下色");
+    applySectionDescriptionStyle(customDesc);
+    segmentedLayout->addWidget(customDesc);
+
+    QTabBar *defaultGalleryBar = new QTabBar();
+    defaultGalleryBar->setAttribute(Qt::WA_StyledBackground, true);
+    defaultGalleryBar->setDrawBase(false);
+    defaultGalleryBar->setProperty(TabBarStyleProperty, Segmented_Slide);
+    defaultGalleryBar->setProperty(SegmentedSemiRoundProperty, true);
+    defaultGalleryBar->setProperty(SegmentedBackgroundColorProperty, QColor("#D9D9DD"));
+    defaultGalleryBar->setProperty(SegmentedBackgroundColorDarkProperty, QColor("#3F3F46"));
+    defaultGalleryBar->setProperty(SegmentedSelectedColorProperty, QColor("#FFFFFF"));
+    defaultGalleryBar->setProperty(SegmentedSelectedColorDarkProperty, QColor("#5C5C64"));
+    defaultGalleryBar->setProperty(SegmentedHoverColorProperty, QColor("#E6E6EA"));
+    defaultGalleryBar->setProperty(SegmentedHoverColorDarkProperty, QColor("#4A4A52"));
+    defaultGalleryBar->setProperty(SegmentedPressedColorProperty, QColor("#D0D0D4"));
+    defaultGalleryBar->setProperty(SegmentedPressedColorDarkProperty, QColor("#55555D"));
+    defaultGalleryBar->addTab("Weekly");
+    defaultGalleryBar->addTab("Daily");
+    defaultGalleryBar->addTab("Monthly");
+    defaultGalleryBar->setCurrentIndex(1);
+    segmentedLayout->addWidget(defaultGalleryBar);
+    
+    // 设置最小宽度, qss的方式有点问题；当前也可以在Style里设置
+    //利用expanding和maximumWidth来实现
+    defaultGalleryBar->setExpanding(true);
+    defaultGalleryBar->setMaximumWidth(150 * defaultGalleryBar->count());
+
+    QTabBar *purpleGalleryBar = new QTabBar();
+    purpleGalleryBar->setAttribute(Qt::WA_StyledBackground, true);
+    purpleGalleryBar->setDrawBase(false);
+    purpleGalleryBar->setProperty(TabBarStyleProperty, Segmented_Slide);
+    purpleGalleryBar->setProperty(SegmentedSemiRoundProperty, true);
+    purpleGalleryBar->setProperty(SegmentedBackgroundColorProperty, QColor("#D9D9DD"));
+    purpleGalleryBar->setProperty(SegmentedBackgroundColorDarkProperty, QColor("#3F3F46"));
+    purpleGalleryBar->setProperty(SegmentedSelectedColorProperty, QColor("#7E57E8"));
+    purpleGalleryBar->setProperty(SegmentedSelectedColorDarkProperty, QColor("#6E4FD6"));
+    purpleGalleryBar->setProperty(SegmentedHoverColorProperty, QColor("#E6E6EA"));
+    purpleGalleryBar->setProperty(SegmentedHoverColorDarkProperty, QColor("#4A4A52"));
+    purpleGalleryBar->setProperty(SegmentedPressedColorProperty, QColor("#D0D0D4"));
+    purpleGalleryBar->setProperty(SegmentedPressedColorDarkProperty, QColor("#55555D"));
+    purpleGalleryBar->addTab("Overview");
+    purpleGalleryBar->addTab("Stats");
+    purpleGalleryBar->addTab("Goals");
+    purpleGalleryBar->addTab("History");
+    purpleGalleryBar->setCurrentIndex(0);
+    segmentedLayout->addWidget(purpleGalleryBar);
+
+    purpleGalleryBar->setExpanding(true);
+    purpleGalleryBar->setMaximumWidth(150 * purpleGalleryBar->count());
+
+    QTabBar *iconOnlyGalleryBar = new QTabBar();
+    iconOnlyGalleryBar->setAttribute(Qt::WA_StyledBackground, true);
+    iconOnlyGalleryBar->setDrawBase(false);
+    iconOnlyGalleryBar->setProperty(TabBarStyleProperty, Segmented_Slide);
+    iconOnlyGalleryBar->setProperty(SegmentedSemiRoundProperty, true);
+    iconOnlyGalleryBar->setProperty(SegmentedBackgroundColorProperty, QColor("#D9D9DD"));
+    iconOnlyGalleryBar->setProperty(SegmentedBackgroundColorDarkProperty, QColor("#3F3F46"));
+    iconOnlyGalleryBar->setProperty(SegmentedSelectedColorProperty, QColor("#FFFFFF"));
+    iconOnlyGalleryBar->setProperty(SegmentedSelectedColorDarkProperty, QColor("#5C5C64"));
+    iconOnlyGalleryBar->setProperty(SegmentedHoverColorProperty, QColor("#E6E6EA"));
+    iconOnlyGalleryBar->setProperty(SegmentedHoverColorDarkProperty, QColor("#4A4A52"));
+    iconOnlyGalleryBar->setProperty(SegmentedPressedColorProperty, QColor("#D0D0D4"));
+    iconOnlyGalleryBar->setProperty(SegmentedPressedColorDarkProperty, QColor("#55555D"));
+    iconOnlyGalleryBar->setIconSize(QSize(kTabBarFluentIconPx, kTabBarFluentIconPx));
+    iconOnlyGalleryBar->addTab(QString());
+    iconOnlyGalleryBar->addTab(QString());
+    iconOnlyGalleryBar->addTab(QString());
+    iconOnlyGalleryBar->addTab(QString());
+    iconOnlyGalleryBar->setCurrentIndex(1);
+    iconOnlyGalleryBar->setExpanding(false);
+    iconOnlyGalleryBar->setMaximumWidth(56 * iconOnlyGalleryBar->count());
+    m_segmentedIconOnlyBar = iconOnlyGalleryBar;
+    segmentedLayout->addWidget(iconOnlyGalleryBar);
+
     segmentedLayout->addStretch();
     mainLayout->addWidget(segmentedWidget, 1);
 }
@@ -254,7 +332,7 @@ void TabShowcaseWidget::addTabBarSection(QVBoxLayout *layout,
     }
     else if (tabStyle == Segmented_Slide || tabStyle == Segmented_Fade || tabStyle == Segmented_WinUI3)
     {
-        // tabBar->setAttribute(Qt::WA_StyledBackground);
+        tabBar->setAttribute(Qt::WA_StyledBackground, true);
     }
     tabBar->addTab("Home");
     tabBar->addTab("Search");
@@ -316,6 +394,22 @@ void TabShowcaseWidget::updateTabIcons()
         for (int i = 0; i < nSeg && i < m_winui3Bar->count(); ++i)
         {
             m_winui3Bar->setTabIcon(i, FONTICON->getIcon(segmentedIcons[i]));
+        }
+    }
+
+    static const int segmentedIconOnlyIcons[] = {
+        static_cast<int>(SegoeIcon::Camera),
+        static_cast<int>(SegoeIcon::Video),
+        static_cast<int>(SegoeIcon::MusicInfo),
+        static_cast<int>(SegoeIcon::Cloud),
+    };
+    if (m_segmentedIconOnlyBar)
+    {
+        for (int i = 0;
+             i < int(sizeof(segmentedIconOnlyIcons) / sizeof(segmentedIconOnlyIcons[0])) && i < m_segmentedIconOnlyBar->count();
+             ++i)
+        {
+            m_segmentedIconOnlyBar->setTabIcon(i, FONTICON->getIcon(segmentedIconOnlyIcons[i]));
         }
     }
 

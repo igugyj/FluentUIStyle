@@ -36,5 +36,14 @@ enum ProgressBarStyle
 [[maybe_unused]] constexpr const char *SwitchStyleProperty = "isSwitchButton";
 [[maybe_unused]] constexpr const char *NavigationViewStyleProperty = "navigationViewIndicator";
 [[maybe_unused]] constexpr const char *NoRoundedCorners = "noRoundedCorners";
+[[maybe_unused]] constexpr const char *SegmentedBackgroundColorProperty = "segmentedBackgroundColor";
+[[maybe_unused]] constexpr const char *SegmentedBackgroundColorDarkProperty = "segmentedBackgroundColorDark";
+[[maybe_unused]] constexpr const char *SegmentedSelectedColorProperty = "segmentedSelectedColor";
+[[maybe_unused]] constexpr const char *SegmentedSelectedColorDarkProperty = "segmentedSelectedColorDark";
+[[maybe_unused]] constexpr const char *SegmentedHoverColorProperty = "segmentedHoverColor";
+[[maybe_unused]] constexpr const char *SegmentedHoverColorDarkProperty = "segmentedHoverColorDark";
+[[maybe_unused]] constexpr const char *SegmentedPressedColorProperty = "segmentedPressedColor";
+[[maybe_unused]] constexpr const char *SegmentedPressedColorDarkProperty = "segmentedPressedColorDark";
+[[maybe_unused]] constexpr const char *SegmentedSemiRoundProperty = "segmentedSemiRound";
 
 #endif // FLUENTUI3STYLEPROPERTIES_H

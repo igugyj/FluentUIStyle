@@ -69,6 +69,44 @@ static constexpr int contentHMargin = 2 * 3;        // margin between rounded bo
                                                     // margin * 3)
 static constexpr int pivotIndicatorPreferredWidth = 24; // Pivot_Grow / Slide / Stretch: fixed bar length, centered
 
+static QColor segmentedColorFromVariant(const QVariant &v, const QColor &fallback)
+{
+    if (!v.isValid())
+    {
+        return fallback;
+    }
+    QColor c;
+    if (v.canConvert<QColor>())
+    {
+        c = qvariant_cast<QColor>(v);
+    }
+    if (!c.isValid())
+    {
+        c = QColor(v.toString());
+    }
+    return c.isValid() ? c : fallback;
+}
+
+static QColor segmentedThemeColorProperty(const QWidget *widget, bool darkTheme, const char *lightName, const char *darkName, const QColor &fallback)
+{
+    if (!widget)
+    {
+        return fallback;
+    }
+    const QVariant v = widget->property(darkTheme ? darkName : lightName);
+    return segmentedColorFromVariant(v, fallback);
+}
+
+static bool segmentedBoolProperty(const QWidget *widget, const char *name, bool fallback)
+{
+    if (!widget)
+    {
+        return fallback;
+    }
+    const QVariant v = widget->property(name);
+    return v.isValid() ? v.toBool() : fallback;
+}
+
 /// 将半透明的 Fluent 颜色与底色预合成，返回完全不透明的颜色。
 /// 用于 input 控件作为 delegate editor 时，防止半透明背景透底。
 static QColor resolveOpaque(const QColor &fluentColor, const QColor &base)
@@ -2866,13 +2904,6 @@ void FluentUI3Style::drawPrimitive(PrimitiveElement element, const QStyleOption 
             painter->fillRect(buttonRect, option->palette.brush(QPalette::Window));
         }
 #endif
-        // {
-        //     if (auto tabBar = qobject_cast<const QTabBar *>(widget))
-        //     {
-        //         painter->setPen(Qt::red);
-        //         painter->drawRect(tabBar->rect());
-        //     }
-        // }
         if (widget && widget->property("isCard").toBool())
         {
             painter->save();
@@ -2921,6 +2952,36 @@ void FluentUI3Style::drawPrimitive(PrimitiveElement element, const QStyleOption 
 
             painter->restore();
             return;
+        }
+
+        if (const QTabBar *tabBar = qobject_cast<const QTabBar *>(widget))
+        {
+            const QColor backgroundColor = segmentedThemeColorProperty(
+                tabBar,
+                colorSchemeIndex == 1,
+                SegmentedBackgroundColorProperty,
+                SegmentedBackgroundColorDarkProperty,
+                highContrastTheme ? option->palette.button().color() : winUI3Color(fillControlAltSecondary));
+            const bool segmentedSemiRound = segmentedBoolProperty(tabBar, SegmentedSemiRoundProperty, false);
+            const QColor borderColor = highContrastTheme ? option->palette.buttonText().color() : winUI3Color(controlStrokePrimary);
+
+            if (tabBar->count() > 0)
+            {
+                QRectF bgRect = tabBar->tabRect(0);
+                for (int i = 1; i < tabBar->count(); ++i)
+                {
+                    bgRect = bgRect.united(tabBar->tabRect(i));
+                }
+                bgRect.adjust(0.5, 0.5, -0.5, -0.5);
+                if (bgRect.isValid())
+                {
+                    const qreal radius = segmentedSemiRound ? bgRect.height() / 2.0 : secondLevelRoundingRadius;
+                    painter->setPen(QPen(borderColor, 1));
+                    painter->setBrush(backgroundColor);
+                    painter->drawRoundedRect(bgRect, radius, radius);
+                    return;
+                }
+            }
         }
 
         if (widget && widget->palette().isBrushSet(QPalette::Active, widget->backgroundRole()))
@@ -4114,6 +4175,18 @@ void FluentUI3Style::drawSegmentedSlideTab(const QStyleOptionTab *tab, QPainter 
     constexpr int selectionInnerSpacingH = 4;
     constexpr int selectionMarginV = 4;
 
+    const bool segmentedSemiRound = segmentedBoolProperty(widget, SegmentedSemiRoundProperty, false);
+    const QColor hoverColor = segmentedThemeColorProperty(
+        widget, colorSchemeIndex == 1, SegmentedHoverColorProperty, SegmentedHoverColorDarkProperty, winUI3Color(subtleHighlightColor));
+    const QColor pressedColor = segmentedThemeColorProperty(
+        widget, colorSchemeIndex == 1, SegmentedPressedColorProperty, SegmentedPressedColorDarkProperty, winUI3Color(subtlePressedColor));
+    const QColor selectedColor = segmentedThemeColorProperty(
+        widget,
+        colorSchemeIndex == 1,
+        SegmentedSelectedColorProperty,
+        SegmentedSelectedColorDarkProperty,
+        highContrastTheme ? tab->palette.highlight().color() : winUI3Color(tabBarSelectedBackground));
+
     PainterStateGuard guard(painter);
     painter->setRenderHint(QPainter::Antialiasing, true);
 
@@ -4133,25 +4206,18 @@ void FluentUI3Style::drawSegmentedSlideTab(const QStyleOptionTab *tab, QPainter 
     const int rightInset = isLastSegment ? selectionOuterMarginH : selectionInnerSpacingH / 2;
     const QRectF adjustedTabRect = QRectF(tab->rect).adjusted(leftInset, selectionMarginV, -rightInset, -selectionMarginV);
 
-    if (isLastSegment)
-    {
-        beginRect = styleObject->property("BeginRect").toRect();
-        const QRectF fullRect = QRectF(beginRect.united(tab->rect)).adjusted(0.5, 0.5, -0.5, -0.5);
-        painter->setPen(QPen(highContrastTheme ? tab->palette.buttonText().color() : winUI3Color(controlStrokePrimary), 1));
-        painter->setBrush(highContrastTheme ? tab->palette.button() : winUI3Color(fillControlAltSecondary));
-        painter->drawRoundedRect(fullRect, secondLevelRoundingRadius, secondLevelRoundingRadius);
-    }
-
     painter->setPen(Qt::NoPen);
     if (isPressed)
     {
-        painter->setBrush(winUI3Color(subtlePressedColor));
-        painter->drawRoundedRect(adjustedTabRect, secondLevelRoundingRadius, secondLevelRoundingRadius);
+        painter->setBrush(pressedColor);
+        const qreal tabRadius = segmentedSemiRound ? adjustedTabRect.height() / 2.0 : secondLevelRoundingRadius;
+        painter->drawRoundedRect(adjustedTabRect, tabRadius, tabRadius);
     }
     else if (isHover)
     {
-        painter->setBrush(winUI3Color(subtleHighlightColor));
-        painter->drawRoundedRect(adjustedTabRect, secondLevelRoundingRadius, secondLevelRoundingRadius);
+        painter->setBrush(hoverColor);
+        const qreal tabRadius = segmentedSemiRound ? adjustedTabRect.height() / 2.0 : secondLevelRoundingRadius;
+        painter->drawRoundedRect(adjustedTabRect, tabRadius, tabRadius);
     }
 
     const QTabBar *tabBar = qobject_cast<const QTabBar *>(widget);
@@ -4214,18 +4280,15 @@ void FluentUI3Style::drawSegmentedSlideTab(const QStyleOptionTab *tab, QPainter 
     styleObject->setProperty("_q_segmented_previous_selected_rect", previousRect);
     styleObject->setProperty("_q_segmented_current_selected_rect", currentRect);
 
-    const QColor selectedBrush = highContrastTheme ? tab->palette.highlight().color() : winUI3Color(tabBarSelectedBackground);
+    const QColor selectedBrush = selectedColor;
     painter->setBrush(selectedBrush);
     drawRect.adjust(0.5, 0.5, -0.5, -0.5);
     
-    const int tabIndex = tabBar->tabAt(tab->rect.center());
-    QRectF clipRect = QRectF(tab->rect);
-
     painter->save();
-    painter->setClipRect(clipRect);
-    // Draw behind existing content to avoid repeated overlap darkening/covering.
-    painter->setCompositionMode(QPainter::CompositionMode_Source);
-    painter->drawRoundedRect(drawRect, secondLevelRoundingRadius, secondLevelRoundingRadius);
+    painter->setClipRect(QRect(tab->rect).adjusted(-2, 0, 2, 0));
+    painter->setCompositionMode(QPainter::CompositionMode_SourceOver);
+    const qreal selectedRadius = segmentedSemiRound ? drawRect.height() / 2.0 : secondLevelRoundingRadius;
+    painter->drawRoundedRect(drawRect, selectedRadius, selectedRadius);
     painter->restore();
 #else
     Q_UNUSED(tab)
@@ -4260,44 +4323,37 @@ void FluentUI3Style::drawSegmentedFadeTab(const QStyleOptionTab *tab, QPainter *
     constexpr int selectionInnerSpacingH = 4;
     constexpr int selectionMarginV = 4;
 
+    const bool segmentedSemiRound = segmentedBoolProperty(widget, SegmentedSemiRoundProperty, false);
+    const QColor hoverColor = segmentedThemeColorProperty(
+        widget, colorSchemeIndex == 1, SegmentedHoverColorProperty, SegmentedHoverColorDarkProperty, winUI3Color(subtleHighlightColor));
+    const QColor pressedColor = segmentedThemeColorProperty(
+        widget, colorSchemeIndex == 1, SegmentedPressedColorProperty, SegmentedPressedColorDarkProperty, winUI3Color(subtlePressedColor));
+    const QColor selectedColor = segmentedThemeColorProperty(
+        widget,
+        colorSchemeIndex == 1,
+        SegmentedSelectedColorProperty,
+        SegmentedSelectedColorDarkProperty,
+        highContrastTheme ? tab->palette.highlight().color() : winUI3Color(tabBarSelectedBackground));
+
     PainterStateGuard guard(painter);
     painter->setRenderHint(QPainter::Antialiasing, true);
-
-    auto beginRect = styleObject->property("BeginRect").toRect();
-    if (isFirstSegment && beginRect != tab->rect)
-    {
-        styleObject->setProperty("BeginRect", tab->rect);
-    }
-
-    auto endRect = styleObject->property("EndRect").toRect();
-    if (isLastSegment && endRect != tab->rect)
-    {
-        styleObject->setProperty("EndRect", tab->rect);
-    }
 
     const int leftInset = isFirstSegment ? selectionOuterMarginH : selectionInnerSpacingH / 2;
     const int rightInset = isLastSegment ? selectionOuterMarginH : selectionInnerSpacingH / 2;
     const QRectF adjustedTabRect = QRectF(tab->rect).adjusted(leftInset, selectionMarginV, -rightInset, -selectionMarginV);
 
-    if (isLastSegment)
-    {
-        beginRect = styleObject->property("BeginRect").toRect();
-        const QRectF fullRect = QRectF(beginRect.united(tab->rect)).adjusted(0.5, 0.5, -0.5, -0.5);
-        painter->setPen(QPen(highContrastTheme ? tab->palette.buttonText().color() : winUI3Color(controlStrokePrimary), 1));
-        painter->setBrush(highContrastTheme ? tab->palette.button() : winUI3Color(fillControlAltSecondary));
-        painter->drawRoundedRect(fullRect, secondLevelRoundingRadius, secondLevelRoundingRadius);
-    }
-
     painter->setPen(Qt::NoPen);
     if (isPressed)
     {
-        painter->setBrush(winUI3Color(subtlePressedColor));
-        painter->drawRoundedRect(adjustedTabRect, secondLevelRoundingRadius, secondLevelRoundingRadius);
+        painter->setBrush(pressedColor);
+        const qreal tabRadius = segmentedSemiRound ? adjustedTabRect.height() / 2.0 : secondLevelRoundingRadius;
+        painter->drawRoundedRect(adjustedTabRect, tabRadius, tabRadius);
     }
     else if (isHover)
     {
-        painter->setBrush(winUI3Color(subtleHighlightColor));
-        painter->drawRoundedRect(adjustedTabRect, secondLevelRoundingRadius, secondLevelRoundingRadius);
+        painter->setBrush(hoverColor);
+        const qreal tabRadius = segmentedSemiRound ? adjustedTabRect.height() / 2.0 : secondLevelRoundingRadius;
+        painter->drawRoundedRect(adjustedTabRect, tabRadius, tabRadius);
     }
 
     const QTabBar *tabBar = qobject_cast<const QTabBar *>(widget);
@@ -4353,7 +4409,7 @@ void FluentUI3Style::drawSegmentedFadeTab(const QStyleOptionTab *tab, QPainter *
         return;
     }
 
-    const QColor selectedBrush = highContrastTheme ? tab->palette.highlight().color() : winUI3Color(tabBarSelectedBackground);
+    const QColor selectedBrush = selectedColor;
     styleObject->setProperty("_q_segmented_fade_selected_tab_index", selectedTabIndex);
     if (!isFadingBetweenTabs)
     {
@@ -4366,7 +4422,8 @@ void FluentUI3Style::drawSegmentedFadeTab(const QStyleOptionTab *tab, QPainter *
 
     painter->setOpacity(opacity);
     painter->setBrush(selectedBrush);
-    painter->drawRoundedRect(adjustedTabRect, secondLevelRoundingRadius, secondLevelRoundingRadius);
+    const qreal selectedRadius = segmentedSemiRound ? adjustedTabRect.height() / 2.0 : secondLevelRoundingRadius;
+    painter->drawRoundedRect(adjustedTabRect, selectedRadius, selectedRadius);
 #else
     Q_UNUSED(tab)
     Q_UNUSED(painter)
@@ -4397,23 +4454,6 @@ void FluentUI3Style::drawSegmentedWinUI3Tab(const QStyleOptionTab *tab, QPainter
 
     PainterStateGuard guard(painter);
     painter->setRenderHint(QPainter::Antialiasing, true);
-
-    auto beginRect = styleObject->property("BeginRect").toRect();
-    if (isFirstSegment && beginRect != tab->rect)
-        styleObject->setProperty("BeginRect", tab->rect);
-
-    auto endRect = styleObject->property("EndRect").toRect();
-    if (isLastSegment && endRect != tab->rect)
-        styleObject->setProperty("EndRect", tab->rect);
-
-    if (isLastSegment)
-    {
-        beginRect = styleObject->property("BeginRect").toRect();
-        const QRectF fullRect = QRectF(beginRect.united(tab->rect)).adjusted(0.5, 0.5, -0.5, -0.5);
-        painter->setPen(QPen(highContrastTheme ? tab->palette.buttonText().color() : winUI3Color(controlStrokePrimary), 1));
-        painter->setBrush(highContrastTheme ? tab->palette.button() : winUI3Color(fillControlAltSecondary));
-        painter->drawRoundedRect(fullRect, secondLevelRoundingRadius, secondLevelRoundingRadius);
-    }
 
     const QTabBar *tabBar = qobject_cast<const QTabBar *>(widget);
     int tabIndex = tabBar->tabAt(tab->rect.center());
@@ -5131,6 +5171,18 @@ void FluentUI3Style::drawTabBarTabLabel(const QStyleOption *option, QPainter *pa
             }
             alignment = Qt::AlignCenter | Qt::TextShowMnemonic;
         }
+        else if (!tab->icon.isNull() && tab->text.isEmpty())
+        {
+            // Icon-only tabs should be visually centered in each segment.
+            const int iconW = tab->iconSize.width();
+            const int iconH = tab->iconSize.height();
+            iconRect = QRect(tab->rect.center().x() - iconW / 2,
+                             tab->rect.center().y() - iconH / 2,
+                             iconW,
+                             iconH);
+            tr = tab->rect;
+            alignment = Qt::AlignCenter | Qt::TextShowMnemonic;
+        }
 
         if (!tab->icon.isNull())
         {
@@ -5152,6 +5204,9 @@ void FluentUI3Style::drawTabBarTabLabel(const QStyleOption *option, QPainter *pa
         const bool isHot = tab->state & (State_Selected | State_MouseOver);
 
         QColor tabTextColor;
+        const bool isSegmentedCustomColors = widget && (widget->property(TabBarStyleProperty).toInt() == TabBarStyle::Segmented_Slide
+                                                        || widget->property(TabBarStyleProperty).toInt() == TabBarStyle::Segmented_Fade)
+                                             && widget->property(SegmentedBackgroundColorProperty).isValid();
         if (!isEnabled)
         {
             tabTextColor = highContrastTheme ? tab->palette.buttonText().color() : winUI3Color(textDisabled);
@@ -5162,7 +5217,8 @@ void FluentUI3Style::drawTabBarTabLabel(const QStyleOption *option, QPainter *pa
         }
         else
         {
-            tabTextColor = highContrastTheme ? tab->palette.buttonText().color() : winUI3Color(textSecondary);
+            tabTextColor = highContrastTheme ? tab->palette.buttonText().color()
+                                             : (isSegmentedCustomColors ? winUI3Color(textPrimary) : winUI3Color(textSecondary));
         }
 
         textPalette.setColor(QPalette::WindowText, tabTextColor);
