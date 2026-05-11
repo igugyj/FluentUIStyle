@@ -14,6 +14,10 @@
 
 <img width="2468" height="1390" alt="screenshot-20260509-112806" src="https://github.com/user-attachments/assets/4f0c8084-864e-409c-afc2-98918ff2ec36" />
 
+## QDesigner展示
+<img width="2616" height="1234" alt="image" src="https://github.com/user-attachments/assets/9f3526d0-cd38-46ee-a325-0c667a11d341" />
+
+
 ## 项目简介
 
 FluentUI3Style基于QProxyStyle实现，完整实现了FluentUI3 UI风格，使用到项目中超简单。通过编译成Qt样式插件，可直接在项目中使用`app.setStyle("FluentUI3")`来应用样式，无需手动加载库或链接源码。
