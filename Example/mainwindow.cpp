@@ -1287,11 +1287,6 @@ void MainWindow::setupToolButtonWithMenu()
     ui->toolButton_3->setPopupMode(QToolButton::InstantPopup);
     ui->toolButton_3->setText(tr("菜单按钮"));
 
-    if (ui->toolButton_3->menu())
-    {
-        return;
-    }
-
     QMenu *menu = new QMenu(ui->toolButton_3);
     QAction *aNewFile = menu->addAction(createFluentIcon("\ue8a5"), tr("新建文件"));
     g_actionIconMap[aNewFile] = "\ue8a5";

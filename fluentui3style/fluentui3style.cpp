@@ -5634,7 +5634,7 @@ void FluentUI3Style::drawControl(ControlElement element, const QStyleOption *opt
             const qreal progressBarHalfThickness = progressBarThickness / 2.0;
             rect.setHeight(progressBarThickness);
             rect.moveTop(center.y() - progressBarHalfThickness - offset);
-            if (progressBarThickness > 1.0 && rect.width() > 1.0)
+            if (rect.width() > 1.0)
             {
                 // After the vertical-path transform, width is still along progress and height is thickness.
                 // Cap insets belong on the progress axis only; do not shrink thickness for vertical bars.
@@ -5729,7 +5729,7 @@ void FluentUI3Style::drawControl(ControlElement element, const QStyleOption *opt
 
             if (accent || (checkable && checked))
             {
-                painter->setPen(WINUI3Colors[colorSchemeIndex][textOnAccentPrimary]);
+                painter->setPen(winUI3Color(textOnAccentPrimary));
             }
             else
             {
@@ -5865,14 +5865,13 @@ void FluentUI3Style::drawControl(ControlElement element, const QStyleOption *opt
                 PainterStateGuard psg(painter);
 
                 const bool isEnabled = !isDisabled(option);
-                QRect textRect = btn->rect.marginsRemoved(QMargins(contentHMargin, 0, contentHMargin, 0));
                 const auto indSize = proxy()->pixelMetric(PM_MenuButtonIndicator, btn, widget);
-                const auto indRect = QRect(btn->rect.right() - indSize - contentItemHMargin,
-                                           textRect.top(),
-                                           indSize + contentItemHMargin,
-                                           btn->rect.height());
-                const auto vindRect = visualRect(btn->direction, btn->rect, indRect);
-                textRect.setWidth(textRect.width() - indSize);
+                const auto indRect = QRect(rect.right() - indSize - 2,
+                                           rect.top(),
+                                           indSize,
+                                           rect.height());
+                const auto vindRect = /*visualRect(btn->direction, textRect, indRect)*/indRect;
+                rect.setWidth(rect.width() - indSize);
 
                 int fontSize = painter->font().pointSize();
                 QFont f(assetFont);
