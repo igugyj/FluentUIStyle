@@ -86,9 +86,22 @@ void TabShowcaseWidget::setupSegmentedTabs(QVBoxLayout *mainLayout)
     addTabBarSection(segmentedLayout, "Segmented Fade TabBar", "特点：选中时会有一个淡入淡出动画效果。", Segmented_Fade, &m_segmentedFadeBar);
     addTabBarSection(segmentedLayout,
                      "Segmented WinUI3 TabBar",
-                     "特点：Segmented风格，使用更接近 WinUI3 的选中指示器效果。",
+                     "特点：Segmented风格，WinUI3 的选中指示器效果。",
                      Segmented_WinUI3,
                      &m_winui3Bar);
+
+    QTabBar *winUi3IconOnlyBar = new QTabBar();
+    winUi3IconOnlyBar->setAttribute(Qt::WA_StyledBackground, true);
+    winUi3IconOnlyBar->setDrawBase(false);
+    winUi3IconOnlyBar->setExpanding(false);
+    winUi3IconOnlyBar->setProperty(TabBarStyleProperty, Segmented_WinUI3);
+    for (int i = 0; i < 5; ++i)
+    {
+        winUi3IconOnlyBar->addTab(QString());
+    }
+    winUi3IconOnlyBar->setCurrentIndex(0);
+    m_winui3IconOnlyBar = winUi3IconOnlyBar;
+    segmentedLayout->addWidget(winUi3IconOnlyBar);
 
     QLabel *customLabel = new QLabel("Segmented Gallery Style");
     applySectionHeadingFont(customLabel, 14);
@@ -157,7 +170,6 @@ void TabShowcaseWidget::setupSegmentedTabs(QVBoxLayout *mainLayout)
     iconOnlyGalleryBar->setProperty(SegmentedHoverColorDarkProperty, QColor("#4A4A52"));
     iconOnlyGalleryBar->setProperty(SegmentedPressedColorProperty, QColor("#D0D0D4"));
     iconOnlyGalleryBar->setProperty(SegmentedPressedColorDarkProperty, QColor("#55555D"));
-    iconOnlyGalleryBar->setIconSize(QSize(kTabBarFluentIconPx, kTabBarFluentIconPx));
     iconOnlyGalleryBar->addTab(QString());
     iconOnlyGalleryBar->addTab(QString());
     iconOnlyGalleryBar->addTab(QString());
@@ -392,6 +404,13 @@ void TabShowcaseWidget::updateTabIcons()
         for (int i = 0; i < nSeg && i < m_winui3Bar->count(); ++i)
         {
             m_winui3Bar->setTabIcon(i, FONTICON->getIcon(segmentedIcons[i]));
+        }
+    }
+    if (m_winui3IconOnlyBar)
+    {
+        for (int i = 0; i < nSeg && i < m_winui3IconOnlyBar->count(); ++i)
+        {
+            m_winui3IconOnlyBar->setTabIcon(i, FONTICON->getIcon(segmentedIcons[i]));
         }
     }
 

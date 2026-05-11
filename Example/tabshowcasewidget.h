@@ -28,6 +28,7 @@ private:
     QTabBar *m_segmentedBar{nullptr};
     QTabBar *m_segmentedFadeBar{nullptr};
     QTabBar *m_winui3Bar{nullptr};
+    QTabBar *m_winui3IconOnlyBar{nullptr};
     QTabBar *m_segmentedIconOnlyBar{nullptr};
     ExTabWidget *m_navigationTabWidget{nullptr};
 };

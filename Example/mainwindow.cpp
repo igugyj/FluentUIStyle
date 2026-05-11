@@ -1406,6 +1406,8 @@ void MainWindow::loadChangelog()
     {
         ui->log->append("无法打开changelog.txt, " + file.errorString());
     }
+
+    ui->log->verticalScrollBar()->setValue(0);
 }
 
 void MainWindow::on_checkBox_4_clicked(bool checked)
