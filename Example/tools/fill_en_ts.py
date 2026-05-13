@@ -49,6 +49,59 @@ PAIRS = r"""
 API参考|API Reference
 检查更新|Check for Updates
 关于|About
+对话框|Dialogs
+常用对话框（Qt Widgets）|Common dialogs (Qt Widgets)
+以下按钮会弹出模态或非模态对话框，用于在 Fluent 样式下查看常见 Qt 对话框外观。|Buttons below open modal dialogs to preview common Qt dialogs under the Fluent style.
+消息框 (QMessageBox)|(QMessageBox)
+信息|Information
+警告|Warning
+严重|Critical
+询问|Question
+这是一条信息消息。|This is an information message.
+这是一条警告消息。|This is a warning message.
+这是一条严重错误消息。|This is a critical message.
+是否继续？|Do you want to continue?
+是否保存文件…|Save before closing…
+文档已修改，是否在关闭前保存？|The document has been modified. Save changes before closing?
+输入框 (QInputDialog)|(QInputDialog)
+单行文本|Single-line text
+整数|Integer
+浮点数|Decimal
+列表选择|Pick from list
+多行文本|Multi-line text
+输入文本|Enter text
+请输入内容：|Please enter text:
+示例|Sample text
+输入整数|Enter integer
+数值：|Value:
+输入浮点数|Enter decimal
+选择一项|Pick one item
+请选择：|Choose:
+选项 A|Option A
+选项 B|Option B
+选项 C|Option C
+多行输入|Multi-line input
+内容：|Content:
+第一行\n第二行|Line 1\nLine 2
+颜色与字体|Color and font
+选择颜色…|Choose color…
+选择颜色|Choose color
+选择字体…|Choose font…
+选择字体|Choose font
+文件对话框 (QFileDialog)|(QFileDialog)
+打开文件…|Open file…
+打开文件|Open file
+保存文件…|Save file…
+保存文件|Save file
+选择文件夹…|Choose folder…
+选择文件夹|Choose folder
+进度对话框 (QProgressDialog)|(QProgressDialog)
+短时进度…|Short progress…
+正在处理…|Working…
+自定义对话框 (QDialog + QDialogButtonBox)|(QDialog + QDialogButtonBox)
+打开示例对话框…|Open sample dialog…
+示例对话框|Sample dialog
+这是一个带 QDialogButtonBox 的简单对话框。|This is a simple dialog with a QDialogButtonBox.
 界面语言|Display language
 简体中文|Simplified Chinese
 English|English

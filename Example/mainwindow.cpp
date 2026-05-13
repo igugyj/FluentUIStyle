@@ -87,11 +87,13 @@
 // Project Headers
 #include <exstackedwidget.h>
 #include <exnavtreewidget.h>
+#include <exmessagebox.h>
 #include <exwinuinavigationview.h>
 #include "font-icon/fonticon.h"
 #include "segoeicongallerywidget.h"
 #include "aboutprojectwidget.h"
 #include "tabshowcasewidget.h"
+#include "dialogshowcasewidget.h"
 #include "../FluentUI3Style/fluentui3styleproperties.h"
 
 #ifndef FLUENT_USE_QT_STYLE
@@ -120,7 +122,6 @@ static inline void emulateLeaveEvent(QWidget *widget);
 static QMap<QAction *, QString> g_actionIconMap;
 static QMap<QMenu *, QString> g_menuIconMap;
 
-
 struct InstalledSoftwareInfo
 {
     QString name;
@@ -133,7 +134,6 @@ struct InstalledSoftwareInfo
     QString quietUninstallString;
     QString installLocation;
 };
-
 
 static QString formatInstallDate(const QString &rawDate)
 {
@@ -301,9 +301,7 @@ static void appendInstalledSoftwareFromRegistry(const QString &rootPath,
         const QString releaseType = reg.value(QStringLiteral("ReleaseType")).toString();
         const QString parentKeyName = reg.value(QStringLiteral("ParentKeyName")).toString();
 
-        if (displayName.isEmpty() || systemComponent || !parentKeyName.isEmpty()
-            || releaseType.contains(QStringLiteral("Update"), Qt::CaseInsensitive)
-            || releaseType.contains(QStringLiteral("Hotfix"), Qt::CaseInsensitive))
+        if (displayName.isEmpty() || systemComponent || !parentKeyName.isEmpty() || releaseType.contains(QStringLiteral("Update"), Qt::CaseInsensitive) || releaseType.contains(QStringLiteral("Hotfix"), Qt::CaseInsensitive))
         {
             reg.endGroup();
             continue;
@@ -357,9 +355,7 @@ static QList<InstalledSoftwareInfo> queryInstalledSoftwareList()
         QStringLiteral("HKCU"), items, dedupeKeys);
 
     std::sort(items.begin(), items.end(), [](const InstalledSoftwareInfo &a, const InstalledSoftwareInfo &b)
-              {
-                  return a.name.localeAwareCompare(b.name) < 0;
-              });
+              { return a.name.localeAwareCompare(b.name) < 0; });
     return items;
 }
 
@@ -501,7 +497,7 @@ MainWindow::MainWindow(QWidget *parent)
     // Setup UI
     ui->setupUi(this);
 
-        // Create menu bar
+    // Create menu bar
     m_menuBar = new QMenuBar();
     setMenuBar(m_menuBar);
 
@@ -606,6 +602,7 @@ void MainWindow::initializeComponents()
 
     setupSegoeIconGalleryPage();
     setupAboutPage();
+    setupDialogsPage();
 
     // Configure stacked widget
     ui->stackedWidget->setVerticalMode(true);
@@ -833,7 +830,6 @@ void MainWindow::buildMainMenus()
     g_actionIconMap[aboutAction] = "\ue946";
 }
 
-
 void MainWindow::rebuildMenuAndToolBar()
 {
     // Clear icon maps
@@ -998,7 +994,7 @@ void MainWindow::setupThemeSelector(QToolBar *toolBar)
                 qApp->setProperty("_q_colorscheme", index);
                 qApp->setStyle("FluentUI3");
 #else
-                fluentUIAppearance.setTheme(index == 0 ? Theme::Light : Theme::Dark);
+            fluentUIAppearance.setTheme(index == 0 ? Theme::Light : Theme::Dark);
 #endif
                 updateActionIcons();
 
@@ -1130,6 +1126,7 @@ void MainWindow::initializeNavigationView()
     m_mainNavItems.push_back(m_winUINavigationView->addNavigationItem(tr("导航控件"), 4, QStringLiteral("\uE8B0")));
     m_mainNavItems.push_back(m_winUINavigationView->addNavigationItem(QStringLiteral("Mdi"), 5, QStringLiteral("\uE9D9")));
     m_mainNavItems.push_back(m_winUINavigationView->addNavigationItem(tr("图标库"), 7, QStringLiteral("\uE8FD")));
+    m_mainNavItems.push_back(m_winUINavigationView->addNavigationItem(tr("对话框"), 9, QStringLiteral("\uE8F2")));
     addTestNavigationTree();
 
     m_navAboutItem = m_winUINavigationView->addFooterNavigationItem(tr("关于"), 8, QStringLiteral("\uE77B"));
@@ -1178,7 +1175,6 @@ void MainWindow::initializeTableView()
     QStringList headers;
     headers << tr("软件名称") << tr("版本") << tr("发布商") << tr("安装日期") << tr("来源");
     table->setHorizontalHeaderLabels(headers);
-
 
     table->verticalHeader()->setMinimumSectionSize(50);
     table->verticalHeader()->setDefaultSectionSize(50);
@@ -1365,6 +1361,17 @@ void MainWindow::setupAboutPage()
     ui->stackedWidget->addWidget(aboutPage);
 }
 
+void MainWindow::setupDialogsPage()
+{
+    if (!ui->stackedWidget)
+    {
+        return;
+    }
+    auto *page = new DialogShowcaseWidget(ui->stackedWidget);
+    page->setObjectName(QStringLiteral("pageDialogs"));
+    ui->stackedWidget->addWidget(page);
+}
+
 //=============================================================================
 // Utility Functions
 //=============================================================================
@@ -1483,7 +1490,7 @@ void MainWindow::loadChangelog()
         ui->log->append(tr("无法打开changelog.txt, %1").arg(file.errorString()));
     }
 
-    ui->log->verticalScrollBar()->setValue(0);
+    ui->log->moveCursor(QTextCursor::Start);
 }
 
 void MainWindow::on_checkBox_4_clicked(bool checked)
@@ -1825,11 +1832,12 @@ void MainWindow::on_rBLangSystem_clicked(bool checked)
 
 void MainWindow::promptRestartAfterLanguageChange()
 {
-    QMessageBox box(this);
+    ExMessageBox box(this);
     box.setIcon(QMessageBox::Information);
     box.setWindowTitle(tr("界面语言"));
     box.setText(tr("语言已保存。是否立即重启应用程序？"));
     QAbstractButton *restartBtn = box.addButton(tr("立即重启"), QMessageBox::AcceptRole);
+    restartBtn->setProperty("accent", true);
     box.addButton(tr("稍后"), QMessageBox::RejectRole);
     box.setDefaultButton(qobject_cast<QPushButton *>(restartBtn));
     box.exec();
@@ -1837,7 +1845,7 @@ void MainWindow::promptRestartAfterLanguageChange()
     {
         if (!AppLanguage::restartApplication())
         {
-            QMessageBox::warning(this, tr("界面语言"), tr("无法重新启动应用程序，请手动关闭后再次打开。"));
+            ExMessageBox::warning(this, tr("界面语言"), tr("无法重新启动应用程序，请手动关闭后再次打开。"));
         }
     }
 }

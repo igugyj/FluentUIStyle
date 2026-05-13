@@ -7,6 +7,8 @@ set(EXAMPLE_SOURCES
     mainwindow.ui
     tabshowcasewidget.cpp
     tabshowcasewidget.h
+    dialogshowcasewidget.cpp
+    dialogshowcasewidget.h
     aboutprojectwidget.cpp
     aboutprojectwidget.h
     segoeicongallerywidget.cpp
@@ -95,6 +97,7 @@ if(EXAMPLE_LUPDATE)
             "${CMAKE_CURRENT_SOURCE_DIR}/mainwindow.cpp"
             "${CMAKE_CURRENT_SOURCE_DIR}/mainwindow.ui"
             "${CMAKE_CURRENT_SOURCE_DIR}/tabshowcasewidget.cpp"
+            "${CMAKE_CURRENT_SOURCE_DIR}/dialogshowcasewidget.cpp"
             "${CMAKE_CURRENT_SOURCE_DIR}/main.cpp"
             "${CMAKE_CURRENT_SOURCE_DIR}/applanguage.cpp"
             -ts

@@ -1,4 +1,8 @@
 set(EXWIDGETS_SOURCES
+    exmessagebox.cpp
+    exmessagebox.h
+    excontentdialog.cpp
+    excontentdialog.h
     exnavtreewidget.cpp
     exnavtreewidget.h
     exwinuinavigationview.cpp

@@ -5,6 +5,7 @@
 #include <QBitmap>
 #include <QComboBox>
 #include <QCommandLinkButton>
+#include <QDialogButtonBox>
 #include <QDockWidget>
 #include <QFontMetrics>
 #include <QGraphicsDropShadowEffect>
@@ -63,11 +64,11 @@
 #include "palettemanager.h"
 #endif
 
-static constexpr int topLevelRoundingRadius = 6;    // Radius for toplevel items like popups for round corners
-static constexpr int secondLevelRoundingRadius = 4; // Radius for second level items like hovered menu item round corners
-static constexpr int contentItemHMargin = 4;        // margin between content items (e.g. text and icon)
-static constexpr int contentHMargin = 2 * 3;        // margin between rounded border and content (= rounded border
-                                                    // margin * 3)
+static constexpr int topLevelRoundingRadius = 6;        // Radius for toplevel items like popups for round corners
+static constexpr int secondLevelRoundingRadius = 4;     // Radius for second level items like hovered menu item round corners
+static constexpr int contentItemHMargin = 4;            // margin between content items (e.g. text and icon)
+static constexpr int contentHMargin = 2 * 3;            // margin between rounded border and content (= rounded border
+                                                        // margin * 3)
 static constexpr int pivotIndicatorPreferredWidth = 24; // Pivot_Grow / Slide / Stretch: fixed bar length, centered
 
 static QColor segmentedColorFromVariant(const QVariant &v, const QColor &fallback)
@@ -260,9 +261,9 @@ enum
 #define ChromeRestore QChar(0xE923)
 #define ChromeClose QChar(0xE8BB)
 
-#define Help QChar(0xE897)
+#define Help QChar(0xF167)
 #define InfoMessage QChar(0xE946)
-#define WarningMessage QChar(0xE7BA)
+#define WarningMessage QChar(0xE814)
 #define CriticalMessage QChar(0xEA39)
 
 template <typename R, typename P, typename B>
@@ -2872,17 +2873,17 @@ void FluentUI3Style::drawPrimitive(PrimitiveElement element, const QStyleOption 
                     }
                 }
             }
-
         }
         break;
     case PE_Widget:
     {
 #if QT_CONFIG(dialogbuttonbox)
         const QDialogButtonBox *buttonBox = nullptr;
-        if (qobject_cast<const QMessageBox *> (widget))
+        if (qobject_cast<const QMessageBox *>(widget))
             buttonBox = widget->findChild<const QDialogButtonBox *>(QLatin1String("qt_msgbox_buttonbox"));
 
-        if (buttonBox) {
+        if (buttonBox)
+        {
             QRect toprect = option->rect;
             toprect.setBottom(buttonBox->geometry().top());
             painter->fillRect(toprect, option->palette.brush(QPalette::Base));
@@ -4271,7 +4272,7 @@ void FluentUI3Style::drawSegmentedSlideTab(const QStyleOptionTab *tab, QPainter 
     const QColor selectedBrush = selectedColor;
     painter->setBrush(selectedBrush);
     drawRect.adjust(0.5, 0.5, -0.5, -0.5);
-    
+
     painter->save();
     painter->setClipRect(QRect(tab->rect).adjusted(-2, 0, 2, 0));
     painter->setCompositionMode(QPainter::CompositionMode_SourceOver);
@@ -4796,7 +4797,8 @@ void FluentUI3Style::drawNavigationViewIndicator(const QStyleOptionViewItem *opt
         return;
     }
 
-    auto kickSlideAnim = [&]() {
+    auto kickSlideAnim = [&]()
+    {
         QNumberStyleAnimation *t = new QNumberStyleAnimation(stateObject);
         t->setStartValue(0.0);
         t->setEndValue(1.0);
@@ -4854,7 +4856,7 @@ void FluentUI3Style::drawNavigationViewIndicator(const QStyleOptionViewItem *opt
             fromH = toH;
             fromIndex = toIndex;
             toTop = (navDir == QStringLiteral("up")) ? (fromTop - normalInset)
-                                                    : (fromTop + fromH + normalInset);
+                                                     : (fromTop + fromH + normalInset);
             toH = 0.0;
             phase = QStringLiteral("exiting");
             kickSlideAnim();
@@ -4906,7 +4908,7 @@ void FluentUI3Style::drawNavigationViewIndicator(const QStyleOptionViewItem *opt
     qreal drawTop = toTop;
     qreal drawBottom = toTop + toH;
     qreal drawX = toX;
-    
+
     //离场和入场时，只画前半段或后半段
     bool shouldDraw = false;
 
@@ -5192,9 +5194,7 @@ void FluentUI3Style::drawTabBarTabLabel(const QStyleOption *option, QPainter *pa
         const bool isHot = tab->state & (State_Selected | State_MouseOver);
 
         QColor tabTextColor;
-        const bool isSegmentedCustomColors = widget && (widget->property(TabBarStyleProperty).toInt() == TabBarStyle::Segmented_Slide
-                                                        || widget->property(TabBarStyleProperty).toInt() == TabBarStyle::Segmented_Fade)
-                                             && widget->property(SegmentedBackgroundColorProperty).isValid();
+        const bool isSegmentedCustomColors = widget && (widget->property(TabBarStyleProperty).toInt() == TabBarStyle::Segmented_Slide || widget->property(TabBarStyleProperty).toInt() == TabBarStyle::Segmented_Fade) && widget->property(SegmentedBackgroundColorProperty).isValid();
         if (!isEnabled)
         {
             tabTextColor = highContrastTheme ? tab->palette.buttonText().color() : winUI3Color(textDisabled);
@@ -5870,7 +5870,7 @@ void FluentUI3Style::drawControl(ControlElement element, const QStyleOption *opt
                                            rect.top(),
                                            indSize,
                                            rect.height());
-                const auto vindRect = /*visualRect(btn->direction, textRect, indRect)*/indRect;
+                const auto vindRect = /*visualRect(btn->direction, textRect, indRect)*/ indRect;
                 rect.setWidth(rect.width() - indSize);
 
                 int fontSize = painter->font().pointSize();
@@ -6267,8 +6267,7 @@ void FluentUI3Style::drawControl(ControlElement element, const QStyleOption *opt
             bool highlightCurrent = (vopt->state & (State_Selected | State_MouseOver)) != 0;
             const QTableView *tableView = qobject_cast<const QTableView *>(widget);
             bool tableCellHighlightHandled = false;
-            const bool tableRowStrategy = tableView && !highContrastTheme && vopt->index.isValid()
-                                          && tableView->selectionBehavior() == QAbstractItemView::SelectRows;
+            const bool tableRowStrategy = tableView && !highContrastTheme && vopt->index.isValid() && tableView->selectionBehavior() == QAbstractItemView::SelectRows;
 
             if (tableRowStrategy)
             {
@@ -6294,8 +6293,7 @@ void FluentUI3Style::drawControl(ControlElement element, const QStyleOption *opt
                     // Selected row: draw stitched border segments across cells.
                     // While editing the current cell in SelectRows mode, keep fill only.
                     bool editingCurrentCell = false;
-                    if (rowSelected && tableView->currentIndex().isValid()
-                        && tableView->currentIndex().row() == vopt->index.row())
+                    if (rowSelected && tableView->currentIndex().isValid() && tableView->currentIndex().row() == vopt->index.row())
                     {
                         const QWidget *fw = QApplication::focusWidget();
                         editingCurrentCell = fw && fw != tableView && tableView->isAncestorOf(fw);
@@ -6947,8 +6945,7 @@ QSize FluentUI3Style::sizeFromContents(ContentsType type, const QStyleOption *op
         contentSize.setHeight(32);
 
         const int tabBarStyle = widget ? widget->property(TabBarStyleProperty).toInt() : 0;
-        const bool isPivotStyle = tabBarStyle == TabBarStyle::Pivot_Grow || tabBarStyle == TabBarStyle::Pivot_Slide
-                                  || tabBarStyle == TabBarStyle::Pivot_Stretch;
+        const bool isPivotStyle = tabBarStyle == TabBarStyle::Pivot_Grow || tabBarStyle == TabBarStyle::Pivot_Slide || tabBarStyle == TabBarStyle::Pivot_Stretch;
         if (isPivotStyle)
         {
             constexpr int pivotIndicatorHeight = 3;
@@ -6962,8 +6959,7 @@ QSize FluentUI3Style::sizeFromContents(ContentsType type, const QStyleOption *op
                 contentVisualHeight = qMax(contentVisualHeight, tab->iconSize.height());
             }
 
-            const int pivotHeight = pivotTextTopPadding + contentVisualHeight + pivotIndicatorTopGap + pivotIndicatorHeight
-                                    + pivotIndicatorBottomPadding;
+            const int pivotHeight = pivotTextTopPadding + contentVisualHeight + pivotIndicatorTopGap + pivotIndicatorHeight + pivotIndicatorBottomPadding;
             constexpr int pivotMinTabWidth = 72;
             // contentSize.setWidth(qMax(contentSize.width(), pivotMinTabWidth));
             contentSize.setHeight(qMax(contentSize.height(), pivotHeight));
@@ -7391,6 +7387,25 @@ void FluentUI3Style::polish(QWidget *widget)
                          [triggerBranchAnimation](const QModelIndex &index)
                          { triggerBranchAnimation(index, false); });
     }
+
+    // 对 QDialogButtonBox 中的"确认类"标准按钮添加 accent 属性，
+    if (auto *buttonBox = qobject_cast<QDialogButtonBox *>(widget))
+    {
+        static const QList<QDialogButtonBox::StandardButton> kAccentStdBtns = {
+            QDialogButtonBox::Ok,
+            QDialogButtonBox::Yes,
+            QDialogButtonBox::Save,
+            QDialogButtonBox::SaveAll,
+            QDialogButtonBox::Open,
+            QDialogButtonBox::Apply,
+            QDialogButtonBox::Retry,
+        };
+        for (const auto stdBtn : kAccentStdBtns)
+        {
+            if (QAbstractButton *btn = buttonBox->button(stdBtn))
+                btn->setProperty("accent", true);
+        }
+    }
 }
 
 void FluentUI3Style::unpolish(QWidget *widget)
@@ -7542,21 +7557,39 @@ QIcon FluentUI3Style::standardIcon(StandardPixmap sp, const QStyleOption *option
                                 : QIcon(":/resource/images/window-restore-s-dark.png");
     }
 
+    auto createMsgBoxIcon = [this](const QChar &ch, const QColor &color) -> QIcon
+    {
+        QFont f(assetFont);
+        f.setPixelSize(52);
+
+        QPixmap pix(64, 64);
+        pix.fill(Qt::transparent);
+
+        QPainter p(&pix);
+        p.setRenderHints(QPainter::Antialiasing | QPainter::TextAntialiasing | QPainter::SmoothPixmapTransform);
+        p.setFont(f);
+        p.setPen(color);
+        p.drawText(pix.rect(), Qt::AlignCenter, ch);
+
+        return QIcon(pix);
+    };
+
     if (sp == SP_MessageBoxInformation)
     {
-        return fluentIcon(InfoMessage, colorSchemeIndex ? QColor("#60CDFF") : QColor("#005FB8"));
+        return createMsgBoxIcon(QChar(0xF167), colorSchemeIndex ? QColor("#60CDFF") : QColor("#005FB8"));
     }
     if (sp == SP_MessageBoxWarning)
     {
-        return fluentIcon(WarningMessage, colorSchemeIndex ? QColor("#FCE100") : QColor("#9D5D00"));
+
+        return createMsgBoxIcon(WarningMessage, colorSchemeIndex ? QColor("#FCE100") : QColor("#9D5D00"));
     }
     if (sp == SP_MessageBoxCritical)
     {
-        return fluentIcon(CriticalMessage, colorSchemeIndex ? QColor("#FF99A4") : QColor("#C42B1C"));
+        return createMsgBoxIcon(QChar(0xEB90), colorSchemeIndex ? QColor("#FF99A4") : QColor("#C42B1C"));
     }
     if (sp == SP_MessageBoxQuestion)
     {
-        return fluentIcon(Help, colorSchemeIndex ? QColor("#60CDFF") : QColor("#005FB8"));
+        return createMsgBoxIcon(Help, colorSchemeIndex ? QColor("#60CDFF") : QColor("#005FB8"));
     }
 
     return QProxyStyle::standardIcon(sp, option, widget);

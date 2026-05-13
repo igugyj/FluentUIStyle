@@ -82,6 +82,7 @@ private:
     void setupMdiArea();
     void setupSegoeIconGalleryPage();
     void setupAboutPage();
+    void setupDialogsPage();
 
     void updateActionIcons();
     void loadChangelog();

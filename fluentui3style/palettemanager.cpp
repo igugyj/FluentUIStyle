@@ -199,7 +199,8 @@ void FluentColorScheme::applyDark(QPalette &p) const
     p.setColor(QPalette::Active, QPalette::PlaceholderText, QColor(255, 255, 255, 128));
 
 #if QT_VERSION >= QT_VERSION_CHECK(6, 6, 0)
-    p.setColor(QPalette::Active, QPalette::Accent, QColor(54, 166, 255, 255));
+    // p.setColor(QPalette::Active, QPalette::Accent, QColor(54, 166, 255, 255));
+    p.setColor(QPalette::Active, QPalette::Accent, QColor(76, 160, 224, 255));
 #else
 #endif
 

@@ -17,12 +17,14 @@ SOURCES += main.cpp \
            applanguage.cpp \
            mainwindow.cpp \
            tabshowcasewidget.cpp \
+           dialogshowcasewidget.cpp \
            font-icon/fonticon.cpp \
            aboutprojectwidget.cpp \
            segoeicongallerywidget.cpp
 HEADERS += mainwindow.h \
            applanguage.h \
            tabshowcasewidget.h \
+           dialogshowcasewidget.h \
            font-icon/fonticon.h \
            aboutprojectwidget.h \
            segoeicongallerywidget.h
