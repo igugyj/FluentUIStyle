@@ -48,6 +48,8 @@ public:
                                    StandardButtons buttons = StandardButtons(Yes | No),
                                    StandardButton defaultButton = NoButton);
 
+    int exec();
+
     void setVisible(bool visible) override;
 
     void setDetailedText(const QString &text);
@@ -61,6 +63,7 @@ protected:
     void showEvent(QShowEvent *event) override;
     void resizeEvent(QResizeEvent *event) override;
     bool event(QEvent *event) override;
+    bool eventFilter(QObject *watched, QEvent *event) override;
 
 private:
     Q_DECLARE_PRIVATE(ExMessageBox)

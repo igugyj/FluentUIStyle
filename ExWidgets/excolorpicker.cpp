@@ -18,7 +18,10 @@
 #include <QTabBar>
 #include <QVBoxLayout>
 #include <QtMath>
+#include <QPainterPath>
 #include <functional>
+
+#include "exstackedwidget.h"
 
 namespace
 {
@@ -27,7 +30,7 @@ constexpr int kSpectrumHeight = 180;
 constexpr int kChannelThickness = 24;
 constexpr int kAlphaThickness = 22;
 constexpr int kShadeStripHeight = 28;
-constexpr int kPaletteCell = 32;
+constexpr int kPaletteCell = 33;
 constexpr int kPaletteColumns = 8;
 constexpr int kPaletteRows = 6;
 constexpr int kTabBarHeight = 36;
@@ -272,7 +275,7 @@ public:
         : QWidget(parent)
     {
         setMinimumHeight(kSpectrumHeight);
-        setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+        setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
         setMouseTracking(true);
     }
 
@@ -295,14 +298,19 @@ protected:
     {
         QPainter painter(this);
         painter.setRenderHint(QPainter::Antialiasing);
-        const QRect r = rect().adjusted(0, 0, -1, -1);
+        const QRect r = rect().adjusted(0, 0, 0, 0);
         if (m_image.isNull() || m_image.size() != r.size())
             m_image = buildHueSaturationImage(r.width(), r.height());
+
+        QPainterPath path;
+        path.addRoundedRect(r, 6, 6);
+        painter.setClipPath(path);
         painter.drawImage(r, m_image);
 
+        //绘制边框
         painter.setPen(QPen(palette().color(QPalette::Mid), 1));
         painter.setBrush(Qt::NoBrush);
-        painter.drawRect(r);
+        painter.drawRoundedRect(r, 6, 6);
 
         const QPointF marker = markerPosition(r);
         painter.setPen(QPen(Qt::white, 2));
@@ -507,7 +515,7 @@ public:
     // Widget 成员
     AccentShadeStripWidget *shadeStrip = nullptr;
     QTabBar *tabBar = nullptr;
-    QStackedWidget *stack = nullptr;
+    ExStackedWidget *stack = nullptr;
 
     // Spectrum 页面
     HueSaturationMapWidget *hueSatMap = nullptr;
@@ -820,13 +828,13 @@ ExColorPicker::ExColorPicker(QWidget *parent)
     d->updateTabIcons();
     root->addWidget(d->tabBar);
 
-    d->stack = new QStackedWidget(this);
+    d->stack = new ExStackedWidget(this);
     root->addWidget(d->stack);
 
     // ======== Spectrum 页面 ========
     auto *spectrumPage = new QWidget(d->stack);
     auto *spectrumMainLay = new QVBoxLayout(spectrumPage);
-    spectrumMainLay->setContentsMargins(0, 0, 0, 0);
+    spectrumMainLay->setContentsMargins(0, 5, 0, 0);
     spectrumMainLay->setSpacing(6);
 
     // Hue×Saturation + 第三维滑条（左右布局）
@@ -834,18 +842,19 @@ ExColorPicker::ExColorPicker(QWidget *parent)
     spectrumRow->setSpacing(8);
     d->thirdDimSlider = new ColorGradientSlider(Qt::Vertical, spectrumPage);
     d->thirdDimSlider->setFixedWidth(kChannelThickness);
-    d->thirdDimSlider->setFixedHeight(kSpectrumHeight);
+    // d->thirdDimSlider->setFixedHeight(kSpectrumHeight);
     d->hueSatMap = new HueSaturationMapWidget(spectrumPage);
-    d->hueSatMap->setFixedHeight(kSpectrumHeight);
+    // d->hueSatMap->setFixedHeight(kSpectrumHeight);
     spectrumRow->addWidget(d->thirdDimSlider);
     spectrumRow->addWidget(d->hueSatMap, 1);
-    spectrumMainLay->addLayout(spectrumRow);
 
     // Spectrum Alpha 滑条
-    d->spectrumAlphaSlider = new ColorGradientSlider(Qt::Horizontal, spectrumPage);
-    d->spectrumAlphaSlider->setFixedHeight(kAlphaThickness);
-    spectrumMainLay->addWidget(d->spectrumAlphaSlider);
+    d->spectrumAlphaSlider = new ColorGradientSlider(Qt::Vertical, spectrumPage);
+    d->spectrumAlphaSlider->setFixedWidth(kChannelThickness);
+    // d->spectrumAlphaSlider->setFixedHeight(kSpectrumHeight);
+    spectrumRow->addWidget(d->spectrumAlphaSlider);
 
+    spectrumMainLay->addLayout(spectrumRow);
     d->stack->addWidget(spectrumPage);
 
     // ======== Palette 页面 ========
@@ -871,7 +880,7 @@ ExColorPicker::ExColorPicker(QWidget *parent)
     d->repCombo->addItem(QStringLiteral("RGB"));
     d->repCombo->addItem(QStringLiteral("HSV"));
     d->repCombo->setCurrentIndex(0);
-    d->repCombo->setFixedWidth(72);
+    d->repCombo->setFixedWidth(80);
     headerRow->addWidget(d->repCombo);
 
     d->hexEdit = new QLineEdit(slidersPage);

@@ -68,9 +68,13 @@ public:
     QDialogButtonBox *m_buttonBox{nullptr};
     QLayout *m_buttonArea{nullptr};
     QWidget *m_customContentWidget{nullptr};
+    QWidget *m_overlay{nullptr};
+    QWidget *m_overlayParent{nullptr};
     bool m_centerButtons{true};
 
     void resetLayout();
+    void showOverlay();
+    void hideOverlay();
 };
 
 void ExMessageBoxPrivate::resetLayout()
@@ -247,6 +251,50 @@ void ExMessageBoxPrivate::resetLayout()
     q->setMaximumWidth(kDialogMaxWidth + 2 * kShadowMargin);
 }
 
+void ExMessageBoxPrivate::showOverlay()
+{
+    QWidget *topLevel = q_ptr->parentWidget();
+    if (!topLevel)
+        topLevel = QApplication::activeWindow();
+    if (!topLevel)
+        return;
+
+    // 找到最顶层的窗口
+    while (topLevel->parentWidget())
+        topLevel = topLevel->parentWidget();
+
+    if (!m_overlay)
+    {
+        m_overlay = new QWidget(topLevel);
+        m_overlay->setObjectName(QStringLiteral("ExMessageBoxOverlay"));
+        m_overlay->setAttribute(Qt::WA_StyledBackground, true);
+        m_overlay->setStyleSheet(
+            QStringLiteral("background-color: rgba(0, 0, 0, %1);")
+                .arg(isDarkMode() ? 0.45 : 0.3));
+        m_overlayParent = topLevel;
+        // 安装事件过滤器，让遮罩跟随父窗口大小变化
+        topLevel->installEventFilter(q_ptr);
+    }
+    m_overlay->setGeometry(topLevel->rect());
+    m_overlay->show();
+    m_overlay->raise();
+}
+
+void ExMessageBoxPrivate::hideOverlay()
+{
+    if (m_overlay)
+    {
+        if (m_overlayParent)
+        {
+            m_overlayParent->removeEventFilter(q_ptr);
+            m_overlayParent = nullptr;
+        }
+        m_overlay->hide();
+        m_overlay->deleteLater();
+        m_overlay = nullptr;
+    }
+}
+
 ExMessageBox::ExMessageBox(QWidget *parent)
     : QMessageBox(parent), d_ptr(new ExMessageBoxPrivate(this))
 {
@@ -289,12 +337,26 @@ bool ExMessageBox::centerButtons() const
     return d->m_centerButtons;
 }
 
+int ExMessageBox::exec()
+{
+    Q_D(ExMessageBox);
+    d->showOverlay();
+    int result = QDialog::exec();
+    d->hideOverlay();
+    return result;
+}
+
 void ExMessageBox::setVisible(bool visible)
 {
     Q_D(ExMessageBox);
     if (visible)
     {
         d->resetLayout();
+        d->showOverlay();
+    }
+    else
+    {
+        d->hideOverlay();
     }
     QMessageBox::setVisible(visible);
 }
@@ -391,6 +453,19 @@ bool ExMessageBox::event(QEvent *e)
         return QDialog::event(e);
     }
     return QMessageBox::event(e);
+}
+
+bool ExMessageBox::eventFilter(QObject *watched, QEvent *event)
+{
+    Q_D(ExMessageBox);
+    if (d->m_overlay && event->type() == QEvent::Resize)
+    {
+        if (auto *w = qobject_cast<QWidget *>(watched))
+        {
+            d->m_overlay->setGeometry(w->rect());
+        }
+    }
+    return QMessageBox::eventFilter(watched, event);
 }
 
 QMessageBox::StandardButton ExMessageBox::information(QWidget *parent,
