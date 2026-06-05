@@ -3,6 +3,7 @@
 
 #include "fluentui3styleproperties.h"
 
+#include <QApplication>
 #include <QComboBox>
 #include <QEvent>
 #include <QHBoxLayout>
@@ -36,6 +37,18 @@ namespace
     constexpr int kTabBarHeight = 36;
     constexpr int kCheckerSize = 4;
     constexpr QColor kCheckerColor(0x19, 0x80, 0x80, 0x80);
+    constexpr int kCornerRadius = 8;
+    constexpr int kShadowMargin = 8;
+
+    bool isDarkMode()
+    {
+        return QApplication::palette().window().color().lightness() < 128;
+    }
+
+    QColor dialogBorderColor(bool dark)
+    {
+        return dark ? QColor(255, 255, 255, 20) : QColor(0, 0, 0, 15);
+    }
 
     enum ColorPickerPage
     {
@@ -75,10 +88,25 @@ namespace
         painter->restore();
     }
 
+    // Qt5: getHsvF(qreal*); Qt6: getHsvF(float*)
+    void colorGetHsvF(const QColor &color, qreal *h, qreal *s, qreal *v, qreal *a = nullptr)
+    {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+        float fh = 0, fs = 0, fv = 0, fa = 0;
+        color.getHsvF(&fh, &fs, &fv, a ? &fa : nullptr);
+        *h = fh;
+        *s = fs;
+        *v = fv;
+        if (a)
+            *a = fa;
+#else
+        color.getHsvF(h, s, v, a);
+#endif
+    }
+
     // ============================================================================
     // Fluent 标准色板（对齐 WinUI3 FluentColorPalette）
     // ============================================================================
-
     QVector<QColor> fluentPaletteColors()
     {
         static const QRgb table[kPaletteRows][kPaletteColumns] = {
@@ -117,7 +145,6 @@ namespace
     // ============================================================================
     // 渐变图像生成（对齐 WinUI3 ColorPickerRenderingHelpers）
     // ============================================================================
-
     QImage buildHueSaturationImage(int width, int height, ExColorPicker::ColorSpectrumShape shape)
     {
         QImage image(qMax(1, width), qMax(1, height), QImage::Format_ARGB32);
@@ -269,7 +296,6 @@ namespace
     // ============================================================================
     // 颜色预览（顶部，所有 tab 共用） — 替代 WinUI3 顶部色阶预览
     // ============================================================================
-
     class AccentShadeStripWidget : public QWidget
     {
     public:
@@ -321,7 +347,6 @@ namespace
     // ============================================================================
     // Hue×Saturation 色域（对齐 WinUI3 ColorSpectrum Box 模式）
     // ============================================================================
-
     class HueSaturationMapWidget : public QWidget
     {
     public:
@@ -332,7 +357,6 @@ namespace
         {
             setMinimumHeight(kSpectrumHeight);
             setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-            setMouseTracking(true);
         }
 
         void setHueSaturation(qreal hue, qreal saturation)
@@ -408,14 +432,40 @@ namespace
 
         void mousePressEvent(QMouseEvent *event) override
         {
-            if (event->button() == Qt::LeftButton)
-                updateFromPos(event->position().toPoint());
+            if (event->button() != Qt::LeftButton)
+                return;
+
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+            const QPoint pos = event->position().toPoint();
+#else
+            const QPoint pos = event->pos();
+#endif
+            m_dragging = true;
+            grabMouse();
+            updateFromPos(pos);
         }
 
         void mouseMoveEvent(QMouseEvent *event) override
         {
-            if (event->buttons() & Qt::LeftButton)
-                updateFromPos(event->position().toPoint());
+            if (!m_dragging || !(event->buttons() & Qt::LeftButton))
+                return;
+
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+            const QPoint pos = event->position().toPoint();
+#else
+            const QPoint pos = event->pos();
+#endif
+            updateFromPos(pos);
+        }
+
+        void mouseReleaseEvent(QMouseEvent *event) override
+        {
+            if (event->button() != Qt::LeftButton || !m_dragging)
+                return;
+
+            m_dragging = false;
+            if (mouseGrabber() == this)
+                releaseMouse();
         }
 
     private:
@@ -470,6 +520,7 @@ namespace
 
         qreal m_hue = 0.0;
         qreal m_saturation = 1.0;
+        bool m_dragging = false;
         ExColorPicker::ColorSpectrumShape m_shape = ExColorPicker::Box;
         QImage m_image;
     };
@@ -477,7 +528,6 @@ namespace
     // ============================================================================
     // 色板网格（对齐 WinUI3 PaletteItemGridView）
     // ============================================================================
-
     class PaletteWidget : public QWidget
     {
     public:
@@ -505,7 +555,7 @@ namespace
         void resizeEvent(QResizeEvent *event) override
         {
             QWidget::resizeEvent(event);
-            update(); // 尺寸变化时重绘
+            update();
         }
 
         void paintEvent(QPaintEvent *) override
@@ -555,7 +605,6 @@ namespace
         }
 
     private:
-        // 实时根据当前 rect 计算 cell 位置，避免初始化时尺寸为 0 的问题
         QVector<QRect> buildRects(const QRect &area) const
         {
             QVector<QRect> rects;
@@ -610,6 +659,22 @@ public:
     QColor outputColor() const;
     void clampAlphaIfDisabled();
 
+    void setupUi();
+    void setupShadeStrip(QVBoxLayout *root);
+    void setupTabBar(QVBoxLayout *root);
+    void setupSpectrumPage();
+    void setupPalettePage();
+    void setupSlidersPage();
+    void addChannelRow(QWidget *parent, QVBoxLayout *layout, const QString &label,
+                       QLabel **labelOut, QSpinBox **spinOut, ColorGradientSlider **sliderOut,
+                       int sliderHeight = kChannelThickness);
+    void setupConnections();
+    void setupChromeConnections();
+    void setupSpectrumConnections();
+    void setupPaletteConnections();
+    void setupSlidersConnections();
+    void initializeState();
+
     ExColorPicker *q_ptr;
     QColor m_color = QColor(0x94, 0x4E, 0x9B);
 
@@ -625,12 +690,13 @@ public:
     ExColorPicker::ColorSpectrumShape m_spectrumShape = ExColorPicker::Box;
     QVector<QColor> m_customPaletteColors;
     bool m_updating = false;
+    bool m_popupMode = false;
 
     // HSVA 缓存
-    float m_h = 0.0f;
-    float m_s = 1.0f;
-    float m_v = 1.0f;
-    float m_a = 1.0f;
+    qreal m_h = 0.0;
+    qreal m_s = 1.0;
+    qreal m_v = 1.0;
+    qreal m_a = 1.0;
 
     // Widget 成员
     AccentShadeStripWidget *shadeStrip = nullptr;
@@ -684,7 +750,7 @@ void ExColorPickerPrivate::clampAlphaIfDisabled()
     if (m_alphaEnabled || m_color.alpha() == 255)
         return;
     m_color.setAlpha(255);
-    m_a = 1.0f;
+    m_a = 1.0;
 }
 
 void ExColorPickerPrivate::syncSpectrumWidgets()
@@ -872,7 +938,7 @@ void ExColorPickerPrivate::applyColor(const QColor &color, bool emitSignal, bool
 
     m_updating = true;
     m_color = normalized;
-    m_color.getHsvF(&m_h, &m_s, &m_v, &m_a);
+    colorGetHsvF(m_color, &m_h, &m_s, &m_v, &m_a);
     clampAlphaIfDisabled();
 
     syncSpectrumWidgets();
@@ -899,10 +965,10 @@ void ExColorPickerPrivate::updateColorFromSpectrum(bool emitSignal)
     if (m_updating || !hueSatMap || !thirdDimSlider)
         return;
 
-    m_h = float(hueSatMap->hue());
-    m_s = float(hueSatMap->saturation());
+    m_h = hueSatMap->hue();
+    m_s = hueSatMap->saturation();
     // 垂直滑条顶端 Value=1，底端 Value=0
-    m_v = float(thirdDimSlider->value()) / 255.0f;
+    m_v = thirdDimSlider->value() / 255.0;
 
     const qreal alpha = m_alphaEnabled ? m_a : 1.0;
     const QColor color = QColor::fromHsvF(m_h, m_s, m_v, alpha);
@@ -964,7 +1030,7 @@ void ExColorPickerPrivate::updateColorFromRgb(bool emitSignal)
     m_updating = true;
     m_color = color;
     clampAlphaIfDisabled();
-    m_color.getHsvF(&m_h, &m_s, &m_v, &m_a);
+    colorGetHsvF(m_color, &m_h, &m_s, &m_v, &m_a);
     syncSpectrumWidgets();
     syncRgbWidgets();
     if (hexEdit)
@@ -988,7 +1054,7 @@ void ExColorPickerPrivate::updateColorFromAlphaChange(int alpha)
 
     m_updating = true;
     m_color.setAlpha(alpha);
-    m_a = alpha / 255.0f;
+    m_a = alpha / 255.0;
     syncRgbWidgets();
     if (hexEdit)
         hexEdit->setText(m_alphaEnabled
@@ -1000,283 +1066,318 @@ void ExColorPickerPrivate::updateColorFromAlphaChange(int alpha)
     Q_EMIT q->colorChanged(q->color());
 }
 
-// ============================================================================
-// ExColorPicker 构造与析构
-// ============================================================================
-
-ExColorPicker::ExColorPicker(QWidget *parent)
-    : QWidget(parent), d_ptr(new ExColorPickerPrivate(this))
+void ExColorPickerPrivate::setupUi()
 {
-    Q_D(ExColorPicker);
-    setFixedWidth(kFlyoutWidth);
-    setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-
-    auto *root = new QVBoxLayout(this);
-    root->setContentsMargins(12, 8, 12, 12);
+    Q_Q(ExColorPicker);
+    auto *root = new QVBoxLayout(q);
+    if (m_popupMode)
+        root->setContentsMargins(kShadowMargin + 12, kShadowMargin + 8, kShadowMargin + 12, kShadowMargin + 12);
+    else
+        root->setContentsMargins(12, 8, 12, 12);
     root->setSpacing(8);
 
-    // ---- 强调色色条（顶部，对齐 WinUI3 shade strip）----
-    d->shadeStrip = new AccentShadeStripWidget(this);
-    root->addWidget(d->shadeStrip);
+    setupShadeStrip(root);
+    setupTabBar(root);
 
-    // ---- 分段 TabBar（对齐 WinUI3 ColorPanelSelector Segmented）----
-    d->tabBar = new QTabBar(this);
-    d->tabBar->setObjectName(QStringLiteral("exColorPickerTabBar"));
-    d->tabBar->setAttribute(Qt::WA_StyledBackground, true);
-    d->tabBar->setDrawBase(false);
-    d->tabBar->setExpanding(true);
-    d->tabBar->setProperty(TabBarStyleProperty, Segmented_WinUI3);
-    d->tabBar->addTab(QString());
-    d->tabBar->addTab(QString());
-    d->tabBar->addTab(QString());
-    d->tabBar->setTabToolTip(0, tr("Spectrum"));
-    d->tabBar->setTabToolTip(1, tr("Palette"));
-    d->tabBar->setTabToolTip(2, tr("Sliders"));
-    d->updateTabIcons();
-    root->addWidget(d->tabBar);
+    stack = new ExStackedWidget(q);
+    root->addWidget(stack);
 
-    d->stack = new ExStackedWidget(this);
-    root->addWidget(d->stack);
+    setupSpectrumPage();
+    setupPalettePage();
+    setupSlidersPage();
+    setupConnections();
+    initializeState();
+}
 
-    // ======== Spectrum 页面 ========
-    auto *spectrumPage = new QWidget(d->stack);
+void ExColorPickerPrivate::setupShadeStrip(QVBoxLayout *root)
+{
+    Q_Q(ExColorPicker);
+    shadeStrip = new AccentShadeStripWidget(q);
+    root->addWidget(shadeStrip);
+}
+
+void ExColorPickerPrivate::setupTabBar(QVBoxLayout *root)
+{
+    Q_Q(ExColorPicker);
+    tabBar = new QTabBar(q);
+    tabBar->setObjectName(QStringLiteral("exColorPickerTabBar"));
+    tabBar->setAttribute(Qt::WA_StyledBackground, true);
+    tabBar->setDrawBase(false);
+    tabBar->setExpanding(true);
+    tabBar->setProperty(TabBarStyleProperty, Segmented_WinUI3);
+    tabBar->addTab(QString());
+    tabBar->addTab(QString());
+    tabBar->addTab(QString());
+    tabBar->setTabToolTip(0, ExColorPicker::tr("Spectrum"));
+    tabBar->setTabToolTip(1, ExColorPicker::tr("Palette"));
+    tabBar->setTabToolTip(2, ExColorPicker::tr("Sliders"));
+    updateTabIcons();
+    root->addWidget(tabBar);
+}
+
+void ExColorPickerPrivate::setupSpectrumPage()
+{
+    auto *spectrumPage = new QWidget(stack);
     auto *spectrumMainLay = new QVBoxLayout(spectrumPage);
     spectrumMainLay->setContentsMargins(0, 5, 0, 0);
     spectrumMainLay->setSpacing(6);
 
-    // Hue×Saturation + 第三维滑条（左右布局）
     auto *spectrumRow = new QHBoxLayout;
     spectrumRow->setSpacing(8);
-    d->thirdDimSlider = new ColorGradientSlider(Qt::Vertical, spectrumPage);
-    d->thirdDimSlider->setFixedWidth(kChannelThickness);
-    d->hueSatMap = new HueSaturationMapWidget(spectrumPage);
-    spectrumRow->addWidget(d->thirdDimSlider);
-    spectrumRow->addWidget(d->hueSatMap, 1);
 
-    // Spectrum Alpha 滑条
-    d->spectrumAlphaSlider = new ColorGradientSlider(Qt::Vertical, spectrumPage);
-    d->spectrumAlphaSlider->setFixedWidth(kChannelThickness);
-    spectrumRow->addWidget(d->spectrumAlphaSlider);
+    thirdDimSlider = new ColorGradientSlider(Qt::Vertical, spectrumPage);
+    thirdDimSlider->setFixedWidth(kChannelThickness);
+    hueSatMap = new HueSaturationMapWidget(spectrumPage);
+    spectrumRow->addWidget(thirdDimSlider);
+    spectrumRow->addWidget(hueSatMap, 1);
+
+    spectrumAlphaSlider = new ColorGradientSlider(Qt::Vertical, spectrumPage);
+    spectrumAlphaSlider->setFixedWidth(kChannelThickness);
+    spectrumRow->addWidget(spectrumAlphaSlider);
 
     spectrumMainLay->addLayout(spectrumRow);
-    d->stack->addWidget(spectrumPage);
+    stack->addWidget(spectrumPage);
+}
 
-    // ======== Palette 页面 ========
-    auto *palettePage = new QWidget(d->stack);
+void ExColorPickerPrivate::setupPalettePage()
+{
+    auto *palettePage = new QWidget(stack);
     auto *paletteLay = new QVBoxLayout(palettePage);
     paletteLay->setContentsMargins(0, 0, 0, 0);
-    d->palette = new PaletteWidget(palettePage);
-    d->palette->setColors(d->m_customPaletteColors.isEmpty() ? fluentPaletteColors() : d->m_customPaletteColors);
-    paletteLay->addWidget(d->palette, 1); // stretch=1，撑满整个页面高度
-    d->stack->addWidget(palettePage);
 
-    // ======== Sliders 页面（对齐 WinUI3 4 通道滑条布局）========
-    auto *slidersPage = new QWidget(d->stack);
+    palette = new PaletteWidget(palettePage);
+    palette->setColors(m_customPaletteColors.isEmpty() ? fluentPaletteColors() : m_customPaletteColors);
+    paletteLay->addWidget(palette, 1);
+    stack->addWidget(palettePage);
+}
+
+void ExColorPickerPrivate::addChannelRow(QWidget *parent, QVBoxLayout *layout, const QString &label,
+                                        QLabel **labelOut, QSpinBox **spinOut, ColorGradientSlider **sliderOut,
+                                        int sliderHeight)
+{
+    auto *row = new QHBoxLayout;
+    row->setSpacing(6);
+
+    auto *labelWidget = new QLabel(label, parent);
+    labelWidget->setFixedWidth(16);
+    labelWidget->setAlignment(Qt::AlignCenter);
+    row->addWidget(labelWidget);
+
+    auto *spinBox = new QSpinBox(parent);
+    spinBox->setRange(0, 255);
+    spinBox->setFixedWidth(56);
+    spinBox->setButtonSymbols(QAbstractSpinBox::NoButtons);
+    row->addWidget(spinBox);
+
+    auto *sliderWidget = new ColorGradientSlider(Qt::Horizontal, parent);
+    sliderWidget->setFixedHeight(sliderHeight);
+    row->addWidget(sliderWidget, 1);
+
+    layout->addLayout(row);
+    *labelOut = labelWidget;
+    *spinOut = spinBox;
+    *sliderOut = sliderWidget;
+}
+
+void ExColorPickerPrivate::setupSlidersPage()
+{
+    auto *slidersPage = new QWidget(stack);
     auto *slidersLay = new QVBoxLayout(slidersPage);
     slidersLay->setContentsMargins(0, 0, 0, 0);
     slidersLay->setSpacing(6);
 
-    // 顶行：颜色模式下拉 + Hex 输入
     auto *headerRow = new QHBoxLayout;
-    d->repCombo = new QComboBox(slidersPage);
-    d->repCombo->addItem(QStringLiteral("RGB"), ExColorPicker::Rgba);
-    d->repCombo->addItem(QStringLiteral("HSV"), ExColorPicker::Hsva);
-    d->repCombo->setCurrentIndex(0);
-    d->repCombo->setFixedWidth(80);
-    headerRow->addWidget(d->repCombo);
+    repCombo = new QComboBox(slidersPage);
+    repCombo->addItem(QStringLiteral("RGB"), ExColorPicker::Rgba);
+    repCombo->addItem(QStringLiteral("HSV"), ExColorPicker::Hsva);
+    repCombo->setCurrentIndex(0);
+    repCombo->setFixedWidth(80);
+    headerRow->addWidget(repCombo);
 
-    connect(d->repCombo, qOverload<int>(&QComboBox::currentIndexChanged), this, [this](int idx)
-            {
-                Q_D(ExColorPicker);
-                d->m_representation = static_cast<ExColorPicker::ColorRepresentation>(d->repCombo->itemData(idx).toInt());
-                d->syncRgbWidgets();
-            });
-
-    d->hexEdit = new QLineEdit(slidersPage);
-    d->hexEdit->setPlaceholderText(QStringLiteral("944E9B"));
-    d->hexEdit->setMaxLength(8);
-    d->hexEdit->setValidator(new QRegularExpressionValidator(
-        QRegularExpression(QStringLiteral("[0-9A-Fa-f]{6,8}")), d->hexEdit));
-    headerRow->addWidget(d->hexEdit, 1);
+    hexEdit = new QLineEdit(slidersPage);
+    hexEdit->setPlaceholderText(QStringLiteral("944E9B"));
+    hexEdit->setMaxLength(8);
+    hexEdit->setValidator(new QRegularExpressionValidator(
+        QRegularExpression(QStringLiteral("[0-9A-Fa-f]{6,8}")), hexEdit));
+    headerRow->addWidget(hexEdit, 1);
     slidersLay->addLayout(headerRow);
 
-    // 通道行构建辅助函数
-    auto addChannelRow = [&](const QString &label, QLabel **lbl, QSpinBox **spin,
-                             ColorGradientSlider **slider)
+    addChannelRow(slidersPage, slidersLay, QStringLiteral("R"), &redLabel, &redSpin, &redSlider);
+    addChannelRow(slidersPage, slidersLay, QStringLiteral("G"), &greenLabel, &greenSpin, &greenSlider);
+    addChannelRow(slidersPage, slidersLay, QStringLiteral("B"), &blueLabel, &blueSpin, &blueSlider);
+    addChannelRow(slidersPage, slidersLay, QStringLiteral("A"), &alphaLabel, &alphaSpin, &alphaSlider, kAlphaThickness);
+
+    slidersLay->addStretch();
+    stack->addWidget(slidersPage);
+}
+
+void ExColorPickerPrivate::setupConnections()
+{
+    setupChromeConnections();
+    setupSpectrumConnections();
+    setupPaletteConnections();
+    setupSlidersConnections();
+}
+
+void ExColorPickerPrivate::setupChromeConnections()
+{
+    Q_Q(ExColorPicker);
+
+    shadeStrip->onColorSelected = [this](const QColor &color)
     {
-        auto *row = new QHBoxLayout;
-        row->setSpacing(6);
-
-        auto *labelWidget = new QLabel(label, slidersPage);
-        labelWidget->setFixedWidth(16);
-        labelWidget->setAlignment(Qt::AlignCenter);
-        row->addWidget(labelWidget);
-
-        auto *spinBox = new QSpinBox(slidersPage);
-        spinBox->setRange(0, 255);
-        spinBox->setFixedWidth(56);
-        spinBox->setButtonSymbols(QAbstractSpinBox::NoButtons);
-        row->addWidget(spinBox);
-
-        auto *sliderWidget = new ColorGradientSlider(Qt::Horizontal, slidersPage);
-        sliderWidget->setFixedHeight(kChannelThickness);
-        row->addWidget(sliderWidget, 1);
-
-        slidersLay->addLayout(row);
-        *lbl = labelWidget;
-        *spin = spinBox;
-        *slider = sliderWidget;
+        applyColor(color, true, true);
     };
 
-    addChannelRow(QStringLiteral("R"), &d->redLabel, &d->redSpin, &d->redSlider);
-    addChannelRow(QStringLiteral("G"), &d->greenLabel, &d->greenSpin, &d->greenSlider);
-    addChannelRow(QStringLiteral("B"), &d->blueLabel, &d->blueSpin, &d->blueSlider);
+    QObject::connect(tabBar, &QTabBar::currentChanged, q, [this](int index)
+                     {
+                         if (index < 0 || !stack)
+                             return;
+                         stack->setCurrentIndex(index);
+                     });
+}
 
-    // Alpha 通道行
+void ExColorPickerPrivate::setupSpectrumConnections()
+{
+    Q_Q(ExColorPicker);
+
+    hueSatMap->onHueSaturationChanged = [this](qreal, qreal)
     {
-        auto *alphaRow = new QHBoxLayout;
-        alphaRow->setSpacing(6);
-
-        d->alphaLabel = new QLabel(QStringLiteral("A"), slidersPage);
-        d->alphaLabel->setFixedWidth(16);
-        d->alphaLabel->setAlignment(Qt::AlignCenter);
-        alphaRow->addWidget(d->alphaLabel);
-
-        d->alphaSpin = new QSpinBox(slidersPage);
-        d->alphaSpin->setRange(0, 255);
-        d->alphaSpin->setFixedWidth(56);
-        d->alphaSpin->setButtonSymbols(QAbstractSpinBox::NoButtons);
-        alphaRow->addWidget(d->alphaSpin);
-
-        d->alphaSlider = new ColorGradientSlider(Qt::Horizontal, slidersPage);
-        d->alphaSlider->setFixedHeight(kAlphaThickness);
-        alphaRow->addWidget(d->alphaSlider, 1);
-
-        slidersLay->addLayout(alphaRow);
-        slidersLay->addStretch();
-    }
-
-    d->stack->addWidget(slidersPage);
-
-    // ======== 信号连接 ========
-
-    // shadeStrip: 点击色条色块
-    d->shadeStrip->onColorSelected = [this](const QColor &color)
-    {
-        Q_D(ExColorPicker);
-        d->applyColor(color, true, true);
-    };
-
-    // TabBar 切换
-    connect(d->tabBar, &QTabBar::currentChanged, this, [this](int index)
-            {
-                Q_D(ExColorPicker);
-                if (index < 0 || !d->stack)
-                    return;
-                d->stack->setCurrentIndex(index);
-            });
-
-    // Spectrum: 色域变化
-    d->hueSatMap->onHueSaturationChanged = [this](qreal, qreal)
-    {
-        Q_D(ExColorPicker);
-        if (d->m_updating)
+        if (m_updating)
             return;
-        d->updateColorFromSpectrum(true);
+        updateColorFromSpectrum(true);
     };
 
-    connect(d->thirdDimSlider, &QSlider::valueChanged, this, [this](int)
-            {
-                Q_D(ExColorPicker);
-                d->updateColorFromSpectrum(true);
-            });
+    QObject::connect(thirdDimSlider, &QSlider::valueChanged, q, [this](int)
+                     { updateColorFromSpectrum(true); });
 
-    // Spectrum Alpha 滑条
-    connect(d->spectrumAlphaSlider, &QSlider::valueChanged, this, [this](int alpha)
-            {
-                Q_D(ExColorPicker);
-                d->updateColorFromAlphaChange(alpha);
-            });
+    QObject::connect(spectrumAlphaSlider, &QSlider::valueChanged, q, [this](int alpha)
+                     { updateColorFromAlphaChange(alpha); });
+}
 
-    // Palette: 颜色选中
-    d->palette->onColorSelected = [this](const QColor &color)
+void ExColorPickerPrivate::setupPaletteConnections()
+{
+    palette->onColorSelected = [this](const QColor &color)
     {
-        Q_D(ExColorPicker);
-        d->applyColor(color, true, true);
+        applyColor(color, true, true);
     };
+}
 
-    // Sliders: RGB SpinBox 变化
+void ExColorPickerPrivate::setupSlidersConnections()
+{
+    Q_Q(ExColorPicker);
+
     auto channelChanged = [this](int)
     {
-        Q_D(ExColorPicker);
-        d->updateColorFromRgb(true);
+        updateColorFromRgb(true);
     };
-    connect(d->redSpin, qOverload<int>(&QSpinBox::valueChanged), this, channelChanged);
-    connect(d->greenSpin, qOverload<int>(&QSpinBox::valueChanged), this, channelChanged);
-    connect(d->blueSpin, qOverload<int>(&QSpinBox::valueChanged), this, channelChanged);
+    QObject::connect(redSpin, qOverload<int>(&QSpinBox::valueChanged), q, channelChanged);
+    QObject::connect(greenSpin, qOverload<int>(&QSpinBox::valueChanged), q, channelChanged);
+    QObject::connect(blueSpin, qOverload<int>(&QSpinBox::valueChanged), q, channelChanged);
 
-    // Sliders: RGB 滑条拖动 → 更新对应的 SpinBox
-    connect(d->redSlider, &QSlider::valueChanged, this, [this](int value)
-            {
-                Q_D(ExColorPicker);
-                if (d->m_updating)
-                    return;
-                d->redSpin->setValue(value);
-            });
-    connect(d->greenSlider, &QSlider::valueChanged, this, [this](int value)
-            {
-                Q_D(ExColorPicker);
-                if (d->m_updating)
-                    return;
-                d->greenSpin->setValue(value);
-            });
-    connect(d->blueSlider, &QSlider::valueChanged, this, [this](int value)
-            {
-                Q_D(ExColorPicker);
-                if (d->m_updating)
-                    return;
-                d->blueSpin->setValue(value);
-            });
+    QObject::connect(redSlider, &QSlider::valueChanged, q, [this](int value)
+                     {
+                         if (m_updating)
+                             return;
+                         redSpin->setValue(value);
+                     });
+    QObject::connect(greenSlider, &QSlider::valueChanged, q, [this](int value)
+                     {
+                         if (m_updating)
+                             return;
+                         greenSpin->setValue(value);
+                     });
+    QObject::connect(blueSlider, &QSlider::valueChanged, q, [this](int value)
+                     {
+                         if (m_updating)
+                             return;
+                         blueSpin->setValue(value);
+                     });
 
-    // Sliders: Alpha 通道
-    connect(d->alphaSpin, qOverload<int>(&QSpinBox::valueChanged), this, [this](int alpha)
-            {
-                Q_D(ExColorPicker);
-                d->updateColorFromAlphaChange(alpha);
-            });
-    connect(d->alphaSlider, &QSlider::valueChanged, this, [this](int alpha)
-            {
-                Q_D(ExColorPicker);
-                if (d->m_updating)
-                    return;
-                d->alphaSpin->setValue(alpha);
-            });
+    QObject::connect(alphaSpin, qOverload<int>(&QSpinBox::valueChanged), q, [this](int alpha)
+                     { updateColorFromAlphaChange(alpha); });
+    QObject::connect(alphaSlider, &QSlider::valueChanged, q, [this](int alpha)
+                     {
+                         if (m_updating)
+                             return;
+                         alphaSpin->setValue(alpha);
+                     });
 
-    // Hex 输入
-    connect(d->hexEdit, &QLineEdit::editingFinished, this, [this]()
-            {
-                Q_D(ExColorPicker);
-                const QString text = d->hexEdit->text().trimmed();
-                QColor parsed;
-                if (text.length() == 8)
-                    parsed = QColor(QStringLiteral("#") + text);
-                else
-                    parsed = QColor(QStringLiteral("#") + text);
-                if (parsed.isValid())
-                    d->applyColor(parsed, true, true);
-            });
+    QObject::connect(hexEdit, &QLineEdit::editingFinished, q, [this]()
+                     {
+                         const QString text = hexEdit->text().trimmed();
+                         const QColor parsed(QStringLiteral("#") + text);
+                         if (parsed.isValid())
+                             applyColor(parsed, true, true);
+                     });
 
-    // 颜色模式切换
-    connect(d->repCombo, qOverload<int>(&QComboBox::currentIndexChanged), this, [this](int idx)
-            {
-                Q_D(ExColorPicker);
-                d->m_representation = (idx == 0) ? Rgba : Hsva;
-            });
+    QObject::connect(repCombo, qOverload<int>(&QComboBox::currentIndexChanged), q, [this](int idx)
+                     {
+                         m_representation = static_cast<ExColorPicker::ColorRepresentation>(repCombo->itemData(idx).toInt());
+                         syncRgbWidgets();
+                     });
+}
 
-    // 初始状态
-    d->applyColor(d->m_color, false, true);
-    d->tabBar->setCurrentIndex(0);
-    d->stack->setCurrentIndex(SpectrumPage);
+void ExColorPickerPrivate::initializeState()
+{
+    applyColor(m_color, false, true);
+    tabBar->setCurrentIndex(0);
+    stack->setCurrentIndex(SpectrumPage);
+}
+
+// ============================================================================
+// ExColorPicker 构造与析构
+// ============================================================================
+
+ExColorPicker::ExColorPicker(QWidget *parent, bool popup)
+    : QDialog(parent)
+    , d_ptr(new ExColorPickerPrivate(this))
+{
+    Q_D(ExColorPicker);
+    d->m_popupMode = popup;
+    if (popup)
+    {
+        setWindowFlags(Qt::Popup | Qt::FramelessWindowHint | Qt::NoDropShadowWindowHint);
+        setAttribute(Qt::WA_TranslucentBackground);
+        setObjectName(QStringLiteral("exColorPickerFlyout"));
+    }
+    else
+    {
+        // 内嵌模式：作为普通子控件，避免 QDialog 默认窗口行为导致不显示
+        setWindowFlags(Qt::Widget);
+        setModal(false);
+        setAttribute(Qt::WA_TranslucentBackground);
+        setAutoFillBackground(false);
+    }
+    setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    d->setupUi();
+    setFixedSize(sizeHint());
+    if (!popup)
+        QWidget::setVisible(true);
+}
+
+bool ExColorPicker::isPopupMode() const
+{
+    Q_D(const ExColorPicker);
+    return d->m_popupMode;
+}
+
+void ExColorPicker::showPopup(QWidget *anchor)
+{
+    if (!d_ptr->m_popupMode || !anchor)
+        return;
+
+    if (isVisible())
+    {
+        hide();
+        return;
+    }
+
+    adjustSize();
+    const QPoint anchorTopLeft = anchor->mapToGlobal(QPoint(0, 0));
+    move(anchorTopLeft.x(), anchorTopLeft.y() - height());
+    show();
+    raise();
+    activateWindow();
 }
 
 ExColorPicker::~ExColorPicker()
@@ -1490,7 +1591,11 @@ void ExColorPicker::setColorSpectrumShape(ColorSpectrumShape shape)
 
 QSize ExColorPicker::sizeHint() const
 {
-    return {kFlyoutWidth, kShadeStripHeight + kTabBarHeight + kSpectrumHeight + kAlphaThickness + 60};
+    Q_D(const ExColorPicker);
+    const int contentW = kFlyoutWidth;
+    const int contentH = kShadeStripHeight + kTabBarHeight + kSpectrumHeight + kAlphaThickness + 60;
+    const int shadow = d->m_popupMode ? 2 * kShadowMargin : 0;
+    return {contentW + shadow, contentH + shadow};
 }
 
 QSize ExColorPicker::minimumSizeHint() const
@@ -1498,9 +1603,55 @@ QSize ExColorPicker::minimumSizeHint() const
     return sizeHint();
 }
 
+void ExColorPicker::setVisible(bool visible)
+{
+    Q_D(ExColorPicker);
+    if (d->m_popupMode)
+        QDialog::setVisible(visible);
+    else
+        QWidget::setVisible(visible);
+}
+
+void ExColorPicker::paintEvent(QPaintEvent *event)
+{
+    Q_UNUSED(event);
+    Q_D(ExColorPicker);
+    if (!d->m_popupMode)
+        return;
+
+    QPainter painter(this);
+    painter.setRenderHint(QPainter::Antialiasing);
+
+    QRect cardRect = rect();
+    cardRect.adjust(kShadowMargin, kShadowMargin, -kShadowMargin, -kShadowMargin);
+    const bool dark = isDarkMode();
+
+    painter.setPen(Qt::NoPen);
+    constexpr int layers = 4;
+    for (int i = layers; i > 0; --i)
+    {
+        const qreal expand = i * 1.5;
+        const int alpha = dark ? (6 + (layers - i) * 4) : (3 + (layers - i) * 2);
+        QRectF sr = cardRect.adjusted(-expand, -expand + 1, expand, expand + 1);
+        QPainterPath sp;
+        sp.addRoundedRect(sr, kCornerRadius + expand, kCornerRadius + expand);
+        painter.setBrush(QColor(0, 0, 0, alpha));
+        painter.drawPath(sp);
+    }
+
+    QPainterPath path;
+    path.addRoundedRect(cardRect, kCornerRadius, kCornerRadius);
+    painter.fillPath(path, palette().window());
+
+    painter.setPen(QPen(dialogBorderColor(dark), 1.0));
+    painter.setBrush(Qt::NoBrush);
+    const QRectF cardRectF(cardRect);
+    painter.drawRoundedRect(cardRectF.adjusted(0.5, 0.5, -0.5, -0.5), kCornerRadius, kCornerRadius);
+}
+
 void ExColorPicker::changeEvent(QEvent *event)
 {
-    QWidget::changeEvent(event);
+    QDialog::changeEvent(event);
     if (event->type() == QEvent::PaletteChange || event->type() == QEvent::StyleChange)
     {
         Q_D(ExColorPicker);

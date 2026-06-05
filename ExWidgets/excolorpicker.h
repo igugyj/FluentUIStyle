@@ -3,8 +3,8 @@
 #include "exwidgets_global.h"
 
 #include <QColor>
+#include <QDialog>
 #include <QVector>
-#include <QWidget>
 
 class ExColorPickerPrivate;
 
@@ -28,7 +28,7 @@ class ExColorPickerPrivate;
  * - ColorRepresentation     → colorRepresentation (Hsva / Rgba)
  * - CustomPaletteColors     → customPaletteColors
  */
-class EXWIDGETS_EXPORT ExColorPicker : public QWidget
+class EXWIDGETS_EXPORT ExColorPicker : public QDialog
 {
     Q_OBJECT
     Q_PROPERTY(QColor color READ color WRITE setColor NOTIFY colorChanged FINAL)
@@ -57,11 +57,13 @@ public:
     };
     Q_ENUM(ColorSpectrumShape)
 
-    explicit ExColorPicker(QWidget *parent = nullptr);
+    explicit ExColorPicker(QWidget *parent = nullptr, bool popup = false);
     ~ExColorPicker() override;
 
-    // ---- 核心属性 ----
+    bool isPopupMode() const;
+    void showPopup(QWidget *anchor);
 
+    // ---- 核心属性 ----
     QColor color() const;
     void setColor(const QColor &color);
 
@@ -72,7 +74,6 @@ public:
     void setColorRepresentation(ColorRepresentation representation);
 
     // ---- 面板可见性 ----
-
     bool isColorSpectrumVisible() const;
     void setColorSpectrumVisible(bool visible);
 
@@ -92,17 +93,16 @@ public:
     void setColorChannelTextInputVisible(bool visible);
 
     // ---- 色板 ----
-
     QVector<QColor> customPaletteColors() const;
     void setCustomPaletteColors(const QVector<QColor> &colors);
 
     // ---- 色域形状 ----
-
     ColorSpectrumShape colorSpectrumShape() const;
     void setColorSpectrumShape(ColorSpectrumShape shape);
 
     QSize sizeHint() const override;
     QSize minimumSizeHint() const override;
+    void setVisible(bool visible) override;
 
 Q_SIGNALS:
     void colorChanged(const QColor &color);
@@ -116,6 +116,7 @@ Q_SIGNALS:
     void colorSpectrumShapeChanged(ColorSpectrumShape shape);
 
 protected:
+    void paintEvent(QPaintEvent *event) override;
     void changeEvent(QEvent *event) override;
 
 private:

@@ -12,7 +12,7 @@ class ExColorPicker;
 /**
  * @brief 带 Flyout 的颜色选择按钮（对应 CommunityToolkit ColorPickerButton）。
  *
- * 按钮 Content 显示当前颜色（含透明棋盘格背景），点击弹出 ExColorPicker。
+ * 按钮 Content 显示当前颜色，点击弹出 ExColorPicker 飞层。
  */
 class EXWIDGETS_EXPORT ExColorPickerButton : public QToolButton
 {
@@ -34,10 +34,12 @@ protected:
     void paintEvent(QPaintEvent *event) override;
     void mousePressEvent(QMouseEvent *event) override;
     void mouseReleaseEvent(QMouseEvent *event) override;
+    bool eventFilter(QObject *watched, QEvent *event) override;
 
 private:
     void syncButtonAppearance();
-    void ensurePopup();
+    void ensurePicker();
+    void showPicker();
 
     ExColorPicker *m_picker = nullptr;
     QColor m_selectedColor = Qt::blue;

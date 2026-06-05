@@ -20,14 +20,16 @@ SOURCES += main.cpp \
            dialogshowcasewidget.cpp \
            font-icon/fonticon.cpp \
            aboutprojectwidget.cpp \
-           segoeicongallerywidget.cpp
+           segoeicongallerywidget.cpp \
+           colorshowcasewidget.cpp
 HEADERS += mainwindow.h \
            applanguage.h \
            tabshowcasewidget.h \
            dialogshowcasewidget.h \
            font-icon/fonticon.h \
            aboutprojectwidget.h \
-           segoeicongallerywidget.h
+           segoeicongallerywidget.h \
+           colorshowcasewidget.h
 FORMS   += mainwindow.ui
 
 # Translations: edit tools/fill_en_ts.py then:

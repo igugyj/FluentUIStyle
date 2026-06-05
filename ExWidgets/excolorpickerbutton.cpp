@@ -2,21 +2,14 @@
 
 #include "excolorpicker.h"
 
-#include <QFrame>
-#include <QHBoxLayout>
-#include <QMenu>
+#include <QEvent>
 #include <QMouseEvent>
 #include <QPainter>
 #include <QStyleOptionToolButton>
 #include <QStylePainter>
-#include <QVBoxLayout>
-#include <QWidgetAction>
 
 namespace
 {
-constexpr int kCheckerSize = 4;
-constexpr QColor kCheckerColor(0x19, 0x80, 0x80, 0x80);
-// FluentUI3: contentHMargin = 6, contentItemHMargin = 4
 constexpr int kContentHMargin = 8;
 constexpr int kContentItemHMargin = 5;
 constexpr int kSwatchVerticalMargin = 5;
@@ -38,7 +31,7 @@ ExColorPickerButton::ExColorPickerButton(QWidget *parent)
     setPopupMode(QToolButton::InstantPopup);
     setArrowType(Qt::DownArrow);
     setFixedSize(68, 32);
-    ensurePopup();
+    connect(this, &QToolButton::clicked, this, &ExColorPickerButton::showPicker);
     syncButtonAppearance();
 }
 
@@ -88,9 +81,9 @@ void ExColorPickerButton::paintEvent(QPaintEvent *)
 
     const int arrowWidth = style()->pixelMetric(QStyle::PM_MenuButtonIndicator, &option, this);
     QRect arrowArea(option.rect.right() - arrowWidth - 2,
-                          option.rect.top(),
-                          arrowWidth,
-                          option.rect.height());
+                    option.rect.top(),
+                    arrowWidth,
+                    option.rect.height());
 
     QRect swatchRect = option.rect.adjusted(kContentHMargin, kSwatchVerticalMargin, -kContentHMargin, -kSwatchVerticalMargin);
     swatchRect.setRight(arrowArea.left() - kContentItemHMargin);
@@ -130,6 +123,16 @@ void ExColorPickerButton::mouseReleaseEvent(QMouseEvent *event)
     QToolButton::mouseReleaseEvent(event);
 }
 
+bool ExColorPickerButton::eventFilter(QObject *watched, QEvent *event)
+{
+    if (watched == m_picker && event->type() == QEvent::Hide)
+    {
+        m_pressed = false;
+        update();
+    }
+    return QToolButton::eventFilter(watched, event);
+}
+
 void ExColorPickerButton::syncButtonAppearance()
 {
     setIcon(QIcon());
@@ -137,36 +140,14 @@ void ExColorPickerButton::syncButtonAppearance()
     update();
 }
 
-void ExColorPickerButton::ensurePopup()
+void ExColorPickerButton::ensurePicker()
 {
     if (m_picker)
         return;
 
-    auto *menu = new QMenu(this);
-    menu->setWindowFlag(Qt::NoDropShadowWindowHint, false);
-
-    auto *container = new QFrame(menu);
-    container->setFrameShape(QFrame::NoFrame);
-    auto *layout = new QVBoxLayout(container);
-    layout->setContentsMargins(0, 0, 0, 0);
-
-    m_picker = new ExColorPicker(container);
+    m_picker = new ExColorPicker(this, true);
+    m_picker->installEventFilter(this);
     m_picker->setColor(m_selectedColor);
-    layout->addWidget(m_picker);
-
-    auto *action = new QWidgetAction(menu);
-    action->setDefaultWidget(container);
-    menu->addAction(action);
-
-    setMenu(menu);
-
-    connect(menu, &QMenu::aboutToHide, this, [this]
-            {
-                if (!m_pressed)
-                    return;
-                m_pressed = false;
-                update();
-            });
 
     connect(m_picker, &ExColorPicker::colorChanged, this, [this](const QColor &)
             {
@@ -177,4 +158,10 @@ void ExColorPickerButton::ensurePopup()
                 syncButtonAppearance();
                 Q_EMIT selectedColorChanged(color);
             });
+}
+
+void ExColorPickerButton::showPicker()
+{
+    ensurePicker();
+    m_picker->showPopup(this);
 }

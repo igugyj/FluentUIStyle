@@ -958,7 +958,13 @@ void ExRangeSlider::mousePressEvent(QMouseEvent *event)
         QWidget::mousePressEvent(event);
         return;
     }
-    const QPointF pos = event->position();
+
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+    QPointF pos = event->position();
+#else
+    QPointF pos = event->pos();
+#endif
+
     ExRangeSlider::Handle hit = d->handleAt(pos);
 
     if (hit == NoHandle)
@@ -1009,9 +1015,15 @@ void ExRangeSlider::mouseMoveEvent(QMouseEvent *event)
 {
     Q_D(ExRangeSlider);
 
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+    QPointF pos = event->position();
+#else
+    QPointF pos = event->pos();
+#endif
+
     if (d->m_pressedHandle == NoHandle)
     {
-        d->setHoveredHandle(d->handleAt(event->position()));
+        d->setHoveredHandle(d->handleAt(pos));
         QWidget::mouseMoveEvent(event);
         return;
     }
@@ -1019,7 +1031,6 @@ void ExRangeSlider::mouseMoveEvent(QMouseEvent *event)
     if (!isEnabled())
         return;
 
-    const QPointF pos = event->position();
     const qreal coord = (d->m_orientation == Qt::Horizontal ? pos.x() : pos.y()) - d->m_pressOffset;
     int value = d->valueOfPosition(coord);
     if (d->m_snapMode == SnapAlways)
@@ -1057,7 +1068,12 @@ void ExRangeSlider::mouseReleaseEvent(QMouseEvent *event)
         return;
     }
 
-    const QPointF pos = event->position();
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+    QPointF pos = event->position();
+#else
+    QPointF pos = event->pos();
+#endif
+
     const qreal coord = (d->m_orientation == Qt::Horizontal ? pos.x() : pos.y()) - d->m_pressOffset;
     int value = d->valueOfPosition(coord);
     if (d->m_snapMode != NoSnap)
@@ -1243,7 +1259,14 @@ bool ExRangeSlider::event(QEvent *event)
     case QEvent::HoverMove:
     {
         auto *he = static_cast<QHoverEvent *>(event);
-        d->setHoveredHandle(d->handleAt(he->position()));
+
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+        QPointF pos = he->position();
+#else
+        QPointF pos = he->pos();
+#endif
+
+        d->setHoveredHandle(d->handleAt(pos));
         break;
     }
     case QEvent::HoverLeave:
