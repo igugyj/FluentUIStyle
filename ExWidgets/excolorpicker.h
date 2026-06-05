@@ -38,6 +38,8 @@ class EXWIDGETS_EXPORT ExColorPicker : public QWidget
     Q_PROPERTY(bool isColorPreviewVisible READ isColorPreviewVisible WRITE setColorPreviewVisible NOTIFY colorPreviewVisibleChanged FINAL)
     Q_PROPERTY(bool isAlphaSliderVisible READ isAlphaSliderVisible WRITE setAlphaSliderVisible NOTIFY alphaSliderVisibleChanged FINAL)
     Q_PROPERTY(bool isColorChannelTextInputVisible READ isColorChannelTextInputVisible WRITE setColorChannelTextInputVisible NOTIFY colorChannelTextInputVisibleChanged FINAL)
+    Q_PROPERTY(bool isColorSliderVisible READ isColorSliderVisible WRITE setColorSliderVisible NOTIFY colorSliderVisibleChanged FINAL)
+    Q_PROPERTY(ColorSpectrumShape colorSpectrumShape READ colorSpectrumShape WRITE setColorSpectrumShape NOTIFY colorSpectrumShapeChanged FINAL)
 
 public:
     enum ColorRepresentation
@@ -83,6 +85,9 @@ public:
     bool isAlphaSliderVisible() const;
     void setAlphaSliderVisible(bool visible);
 
+    bool isColorSliderVisible() const;
+    void setColorSliderVisible(bool visible);
+
     bool isColorChannelTextInputVisible() const;
     void setColorChannelTextInputVisible(bool visible);
 
@@ -106,7 +111,9 @@ Q_SIGNALS:
     void colorPaletteVisibleChanged(bool visible);
     void colorPreviewVisibleChanged(bool visible);
     void alphaSliderVisibleChanged(bool visible);
+    void colorSliderVisibleChanged(bool visible);
     void colorChannelTextInputVisibleChanged(bool visible);
+    void colorSpectrumShapeChanged(ColorSpectrumShape shape);
 
 protected:
     void changeEvent(QEvent *event) override;

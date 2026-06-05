@@ -36,7 +36,7 @@ ExColorPickerButton::ExColorPickerButton(QWidget *parent)
     setToolButtonStyle(Qt::ToolButtonIconOnly);
     setPopupMode(QToolButton::InstantPopup);
     setArrowType(Qt::DownArrow);
-    setFixedSize(56, 32);
+    setFixedSize(68, 32);
     ensurePopup();
     syncButtonAppearance();
 }
@@ -65,13 +65,14 @@ ExColorPicker *ExColorPickerButton::colorPicker() const
 
 void ExColorPickerButton::syncButtonAppearance()
 {
-    const int swatchSize = 18;
-    QPixmap pix(swatchSize, swatchSize);
+    const int swatchWidth = 32;
+    const int swatchHeight = 20;
+    QPixmap pix(swatchWidth, swatchHeight);
     pix.fill(Qt::transparent);
 
     QPainter painter(&pix);
     painter.setRenderHint(QPainter::Antialiasing);
-    const QRect r(0, 0, swatchSize, swatchSize);
+    const QRect r(0, 0, swatchWidth, swatchHeight);
     paintCheckerboard(&painter, r);
     painter.setPen(Qt::NoPen);
     painter.setBrush(m_selectedColor);
@@ -81,7 +82,7 @@ void ExColorPickerButton::syncButtonAppearance()
     painter.drawRoundedRect(r.adjusted(1, 1, -1, -1), 3, 3);
 
     setIcon(QIcon(pix));
-    setIconSize(QSize(swatchSize, swatchSize));
+    setIconSize(QSize(swatchWidth, swatchHeight));
     setText(QString());
 }
 
