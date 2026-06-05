@@ -5,6 +5,8 @@
 #include <QColor>
 #include <QToolButton>
 
+class QMouseEvent;
+
 class ExColorPicker;
 
 /**
@@ -28,10 +30,16 @@ public:
 Q_SIGNALS:
     void selectedColorChanged(const QColor &color);
 
+protected:
+    void paintEvent(QPaintEvent *event) override;
+    void mousePressEvent(QMouseEvent *event) override;
+    void mouseReleaseEvent(QMouseEvent *event) override;
+
 private:
     void syncButtonAppearance();
     void ensurePopup();
 
     ExColorPicker *m_picker = nullptr;
     QColor m_selectedColor = Qt::blue;
+    bool m_pressed = false;
 };

@@ -100,6 +100,20 @@ namespace
         return colors;
     }
 
+    struct RingSpectrumGeometry
+    {
+        QPointF center;
+        qreal radius = 0.0;
+    };
+
+    RingSpectrumGeometry ringSpectrumGeometry(const QRectF &bounds)
+    {
+        return {
+            bounds.center(),
+            qMin(bounds.width(), bounds.height()) / 2.0,
+        };
+    }
+
     // ============================================================================
     // 渐变图像生成（对齐 WinUI3 ColorPickerRenderingHelpers）
     // ============================================================================
@@ -126,35 +140,27 @@ namespace
         }
         else
         {
-            const qreal cx = width / 2.0;
-            const qreal cy = height / 2.0;
-            const qreal radius = qMin(cx, cy);
-            const qreal feather = 1.5; // 边缘羽化宽度（像素），消除锯齿
+            const RingSpectrumGeometry geo = ringSpectrumGeometry(QRectF(0, 0, width, height));
             for (int y = 0; y < height; ++y)
             {
                 QRgb *scanLine = reinterpret_cast<QRgb *>(image.scanLine(y));
                 for (int x = 0; x < width; ++x)
                 {
-                    const qreal dx = x - cx;
-                    const qreal dy = y - cy;
+                    const qreal dx = (x + 0.5) - geo.center.x();
+                    const qreal dy = (y + 0.5) - geo.center.y();
                     const qreal distance = std::hypot(dx, dy);
-                    if (distance >= radius + feather)
+                    if (distance > geo.radius)
                     {
                         scanLine[x] = Qt::transparent;
+                        continue;
                     }
-                    else
-                    {
-                        qreal angle = std::atan2(dy, dx);
-                        if (angle < 0)
-                            angle += 2 * M_PI;
-                        const qreal hue = angle / (2 * M_PI);
-                        const qreal saturation = qMin(1.0, distance / radius);
-                        QColor c = QColor::fromHsvF(hue, saturation, 1.0);
-                        // 边缘 feather 范围内线性衰减 alpha
-                        if (distance > radius - feather)
-                            c.setAlphaF(qBound(0.0, (radius + feather - distance) / (2 * feather), 1.0));
-                        scanLine[x] = c.rgba();
-                    }
+
+                    qreal angle = std::atan2(dy, dx);
+                    if (angle < 0)
+                        angle += 2 * M_PI;
+                    const qreal hue = angle / (2 * M_PI);
+                    const qreal saturation = qMin(1.0, distance / geo.radius);
+                    scanLine[x] = QColor::fromHsvF(hue, saturation, 1.0).rgb();
                 }
             }
         }
@@ -362,14 +368,15 @@ namespace
                 m_image = buildHueSaturationImage(r.width(), r.height(), m_shape);
 
             QPainterPath path;
+            RingSpectrumGeometry ringGeo;
             if (m_shape == ExColorPicker::Box)
             {
                 path.addRoundedRect(r, 6, 6);
             }
             else
             {
-                const qreal radius = qMin(r.width(), r.height()) / 2.0;
-                path.addEllipse(QPointF(r.center()), radius, radius);
+                ringGeo = ringSpectrumGeometry(QRectF(r));
+                path.addEllipse(ringGeo.center, ringGeo.radius, ringGeo.radius);
             }
             painter.setClipPath(path);
             painter.drawImage(r, m_image);
@@ -383,16 +390,13 @@ namespace
             }
             else
             {
-                const qreal radius = qMin(r.width(), r.height()) / 2.0;
-                painter.drawEllipse(QPointF(r.center()), radius, radius);
+                painter.drawEllipse(ringGeo.center, ringGeo.radius, ringGeo.radius);
             }
 
             const QPointF marker = markerPosition(r);
-            painter.setPen(QPen(Qt::white, 2));
             painter.setBrush(Qt::NoBrush);
-            painter.drawEllipse(marker, 7, 7);
             painter.setPen(QPen(Qt::black, 1));
-            painter.drawEllipse(marker, 7, 7);
+            painter.drawEllipse(marker, 8, 8);
         }
 
         void resizeEvent(QResizeEvent *event) override
@@ -424,12 +428,11 @@ namespace
             }
             else
             {
-                const qreal cx = area.left() + area.width() / 2.0;
-                const qreal cy = area.top() + area.height() / 2.0;
-                const qreal radius = qMin(area.width(), area.height()) / 2.0;
+                const RingSpectrumGeometry geo = ringSpectrumGeometry(QRectF(area));
                 const qreal angle = m_hue * 2 * M_PI;
-                const qreal distance = m_saturation * radius;
-                return QPointF(cx + distance * std::cos(angle), cy + distance * std::sin(angle));
+                const qreal distance = m_saturation * geo.radius;
+                return QPointF(geo.center.x() + distance * std::cos(angle),
+                               geo.center.y() + distance * std::sin(angle));
             }
         }
 
@@ -445,17 +448,15 @@ namespace
             }
             else
             {
-                const qreal cx = area.left() + area.width() / 2.0;
-                const qreal cy = area.top() + area.height() / 2.0;
-                const qreal radius = qMin(area.width(), area.height()) / 2.0;
-                const qreal dx = pos.x() - cx;
-                const qreal dy = pos.y() - cy;
+                const RingSpectrumGeometry geo = ringSpectrumGeometry(QRectF(area));
+                const qreal dx = pos.x() - geo.center.x();
+                const qreal dy = pos.y() - geo.center.y();
                 const qreal distance = std::hypot(dx, dy);
                 qreal angle = std::atan2(dy, dx);
                 if (angle < 0)
                     angle += 2 * M_PI;
                 hue = angle / (2 * M_PI);
-                saturation = qBound(0.0, distance / radius, 1.0);
+                saturation = qBound(0.0, distance / geo.radius, 1.0);
             }
 
             if (qFuzzyCompare(m_hue, hue) && qFuzzyCompare(m_saturation, saturation))
@@ -606,6 +607,8 @@ public:
     void refreshShadeStrip();
     void updateTabIcons();
     void updatePanelVisibility();
+    QColor outputColor() const;
+    void clampAlphaIfDisabled();
 
     ExColorPicker *q_ptr;
     QColor m_color = QColor(0x94, 0x4E, 0x9B);
@@ -667,6 +670,23 @@ ExColorPickerPrivate::ExColorPickerPrivate(ExColorPicker *q)
 {
 }
 
+QColor ExColorPickerPrivate::outputColor() const
+{
+    if (m_alphaEnabled)
+        return m_color;
+    QColor color = m_color;
+    color.setAlpha(255);
+    return color;
+}
+
+void ExColorPickerPrivate::clampAlphaIfDisabled()
+{
+    if (m_alphaEnabled || m_color.alpha() == 255)
+        return;
+    m_color.setAlpha(255);
+    m_a = 1.0f;
+}
+
 void ExColorPickerPrivate::syncSpectrumWidgets()
 {
     if (!hueSatMap || !thirdDimSlider)
@@ -677,8 +697,8 @@ void ExColorPickerPrivate::syncSpectrumWidgets()
     thirdDimSlider->setImageBuilder([this](QSize sz)
                                     { return buildThirdDimensionImage(m_h, m_s, sz.width(), sz.height()); });
     thirdDimSlider->blockSignals(true);
-    // 垂直滑条：最大值在上 (inverted)
-    thirdDimSlider->setValue(qRound((1.0f - m_v) * 255));
+    // 垂直滑条默认最大值在上，与渐变图顶端 Value=1 对齐
+    thirdDimSlider->setValue(qRound(m_v * 255));
     thirdDimSlider->blockSignals(false);
 
     if (spectrumAlphaSlider)
@@ -844,12 +864,16 @@ void ExColorPickerPrivate::updatePanelVisibility()
 void ExColorPickerPrivate::applyColor(const QColor &color, bool emitSignal, bool updateInputs)
 {
     Q_Q(ExColorPicker);
-    if (!color.isValid() || (m_color == color && m_updating))
+    QColor normalized = color;
+    if (!m_alphaEnabled)
+        normalized.setAlpha(255);
+    if (!normalized.isValid() || (m_color == normalized && m_updating))
         return;
 
     m_updating = true;
-    m_color = color;
+    m_color = normalized;
     m_color.getHsvF(&m_h, &m_s, &m_v, &m_a);
+    clampAlphaIfDisabled();
 
     syncSpectrumWidgets();
     if (updateInputs)
@@ -877,15 +901,17 @@ void ExColorPickerPrivate::updateColorFromSpectrum(bool emitSignal)
 
     m_h = float(hueSatMap->hue());
     m_s = float(hueSatMap->saturation());
-    // 垂直滑条 inverted: 顶端=0, 底端=255, 对应 Value=1→0
-    m_v = float(255 - thirdDimSlider->value()) / 255.0f;
+    // 垂直滑条顶端 Value=1，底端 Value=0
+    m_v = float(thirdDimSlider->value()) / 255.0f;
 
-    const QColor color = QColor::fromHsvF(m_h, m_s, m_v, m_a);
+    const qreal alpha = m_alphaEnabled ? m_a : 1.0;
+    const QColor color = QColor::fromHsvF(m_h, m_s, m_v, alpha);
     if (m_color == color)
         return;
 
     m_updating = true;
     m_color = color;
+    clampAlphaIfDisabled();
 
     // Update spectrum sliders images since h/s/v changed
     thirdDimSlider->setImageBuilder([this](QSize sz)
@@ -937,6 +963,7 @@ void ExColorPickerPrivate::updateColorFromRgb(bool emitSignal)
 
     m_updating = true;
     m_color = color;
+    clampAlphaIfDisabled();
     m_color.getHsvF(&m_h, &m_s, &m_v, &m_a);
     syncSpectrumWidgets();
     syncRgbWidgets();
@@ -956,7 +983,7 @@ void ExColorPickerPrivate::updateColorFromRgb(bool emitSignal)
 void ExColorPickerPrivate::updateColorFromAlphaChange(int alpha)
 {
     Q_Q(ExColorPicker);
-    if (m_updating)
+    if (m_updating || !m_alphaEnabled)
         return;
 
     m_updating = true;
@@ -1126,6 +1153,7 @@ ExColorPicker::ExColorPicker(QWidget *parent)
         alphaRow->addWidget(d->alphaSlider, 1);
 
         slidersLay->addLayout(alphaRow);
+        slidersLay->addStretch();
     }
 
     d->stack->addWidget(slidersPage);
@@ -1238,7 +1266,7 @@ ExColorPicker::ExColorPicker(QWidget *parent)
                     d->applyColor(parsed, true, true);
             });
 
-    // 颜色模式切换（后续可扩展 HSV 输入）
+    // 颜色模式切换
     connect(d->repCombo, qOverload<int>(&QComboBox::currentIndexChanged), this, [this](int idx)
             {
                 Q_D(ExColorPicker);
@@ -1263,13 +1291,7 @@ ExColorPicker::~ExColorPicker()
 QColor ExColorPicker::color() const
 {
     Q_D(const ExColorPicker);
-    if (!d->m_alphaEnabled)
-    {
-        QColor c = d->m_color;
-        c.setAlpha(255);
-        return c;
-    }
-    return d->m_color;
+    return d->outputColor();
 }
 
 void ExColorPicker::setColor(const QColor &color)
@@ -1300,7 +1322,16 @@ void ExColorPicker::setAlphaEnabled(bool enabled)
         d->alphaLabel->setVisible(enabled && d->m_channelTextInputVisible);
     if (d->spectrumAlphaSlider)
         d->spectrumAlphaSlider->setVisible(enabled && d->m_alphaSliderVisible);
+    if (!enabled)
+        d->clampAlphaIfDisabled();
+    d->syncSpectrumWidgets();
+    d->syncRgbWidgets();
+    if (d->hexEdit)
+        d->hexEdit->setText(enabled
+                                ? d->m_color.name(QColor::HexArgb).mid(1).toUpper()
+                                : d->m_color.name(QColor::HexRgb).toUpper());
     Q_EMIT alphaEnabledChanged(enabled);
+    Q_EMIT colorChanged(color());
 }
 
 ExColorPicker::ColorRepresentation ExColorPicker::colorRepresentation() const
