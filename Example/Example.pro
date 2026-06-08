@@ -8,6 +8,7 @@ INCLUDEPATH += $$PWD/../ExWidgets
 LIBS += -L$$DESTDIR_LIB -lExWidgets
 
 INCLUDEPATH += $$PWD/../fluentui3style
+INCLUDEPATH += $$PWD/../FluentUI3Colors
 
 win32 {
     DEFINES += FLUENT_USE_QT_STYLE EXAMPLE_ENABLE_I18N
