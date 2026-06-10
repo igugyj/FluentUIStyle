@@ -57,7 +57,7 @@ void PaletteManager::applyPalette(QPalette &palette, bool isDark) const
     // Example项目
     // WidgetBgMode::Pixmap需要Base和Window有透明度，不然看不见背景
     //无此需求屏蔽以下代码
-    if (qApp->property("_q_widget_mode").toBool())
+    if (qApp->property("_q_widget_mode").toInt() >= 1)
     {
         auto setAlpha = [&](QPalette::ColorGroup group, QPalette::ColorRole colorRole, int a)
         {

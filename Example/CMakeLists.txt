@@ -3,6 +3,12 @@ set(EXAMPLE_SOURCES
     mainwindow.cpp
     mainwindow.h
     mainwindow.ui
+    frameless/fluenttitlebar.cpp
+    frameless/fluenttitlebar.h
+    frameless/fluentwindowframe.cpp
+    frameless/fluentwindowframe.h
+    installedsoftwaretablewidget.cpp
+    installedsoftwaretablewidget.h
     tabshowcasewidget.cpp
     tabshowcasewidget.h
     dialogshowcasewidget.cpp
@@ -75,25 +81,41 @@ else()
     )
 endif()
 
+target_include_directories(Example PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/frameless
+)
+
 target_link_libraries(Example PRIVATE
     ExWidgets
+    QWindowKit::Widgets
     Qt${QT_VERSION_MAJOR}::Core
     Qt${QT_VERSION_MAJOR}::Gui
     Qt${QT_VERSION_MAJOR}::Widgets
     Qt${QT_VERSION_MAJOR}::Svg
-    Qt${QT_VERSION_MAJOR}::GuiPrivate
-    Qt${QT_VERSION_MAJOR}::WidgetsPrivate
-    Qt${QT_VERSION_MAJOR}::CorePrivate
+    ${FLUENT_QT_PRIVATE_LIBS}
 )
-
-if(WIN32)
-    target_link_libraries(Example PRIVATE dwmapi)
-endif()
 
 set_target_properties(Example PROPERTIES
     WIN32_EXECUTABLE $<NOT:$<CONFIG:Debug>>
     DEBUG_POSTFIX d
 )
+
+# $<TARGET_FILE:...> is configuration-aware (Debug -> QWKCored.dll, Release -> QWKCore.dll).
+# QWK targets already output to ${CMAKE_BINARY_DIR}/bin; this POST_BUILD is a safety net.
+if(TARGET QWKCore AND TARGET QWKWidgets)
+    add_dependencies(Example QWKCore QWKWidgets)
+
+    add_custom_command(TARGET Example POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "$<TARGET_FILE:QWKCore>"
+            "$<TARGET_FILE_DIR:Example>"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "$<TARGET_FILE:QWKWidgets>"
+            "$<TARGET_FILE_DIR:Example>"
+        COMMENT "Copy QWindowKit ($<CONFIG>) runtime libraries next to Example"
+        VERBATIM
+    )
+endif()
 
 if(WIN32 AND EXAMPLE_LUPDATE)
     add_custom_target(

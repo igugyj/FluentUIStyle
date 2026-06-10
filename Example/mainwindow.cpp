@@ -21,19 +21,13 @@
 #include <QEasingCurve>
 #include <QEvent>
 #include <QFile>
-#include <QDate>
 #include <QKeySequence>
 #include <QPointer>
 #include <QPainter>
-#include <QSettings>
 #include <QScreen>
 #include <QSvgRenderer>
-#include <QSet>
 #include <QTextStream>
 #include <QTimer>
-#include <QFileIconProvider>
-#include <QFileInfo>
-#include <QDir>
 
 // Qt GUI Headers
 #include <QColor>
@@ -75,8 +69,6 @@
 #include <QStyleHints>
 #include <QStyleOptionComboBox>
 #include <QTabBar>
-#include <QTableWidget>
-#include <QTableWidgetItem>
 #include <QTextEdit>
 #include <QToolBar>
 #include <QToolButton>
@@ -95,10 +87,13 @@
 #include "font-icon/fonticon.h"
 #include "segoeicongallerywidget.h"
 #include "aboutprojectwidget.h"
+#include "installedsoftwaretablewidget.h"
 #include "tabshowcasewidget.h"
 #include "dialogshowcasewidget.h"
 #include "colorshowcasewidget.h"
 #include "fluentui3styleproperties.h"
+#include "frameless/fluenttitlebar.h"
+#include "frameless/fluentwindowframe.h"
 
 #ifndef FLUENT_USE_QT_STYLE
 #include <fluentui3style.h>
@@ -107,16 +102,11 @@
 #include "fluentuiappearance.h"
 #endif
 
-// Private Qt Headers (for custom context menu)
-#include <private/qabstractspinbox_p.h>
-#include <private/qlineedit_p.h>
-
 //=============================================================================
 // Forward Declarations
 //=============================================================================
 
 void applyStandardMenuIcons(QMenu *menu, QWidget *widget);
-static inline void emulateLeaveEvent(QWidget *widget);
 
 static void refreshFluentStyle()
 {
@@ -160,243 +150,6 @@ QString targetArchitectureName()
 // Icon maps for menu and action icons
 static QMap<QAction *, QString> g_actionIconMap;
 static QMap<QMenu *, QString> g_menuIconMap;
-
-struct InstalledSoftwareInfo
-{
-    QString name;
-    QString version;
-    QString publisher;
-    QString installDate;
-    QString source;
-    QString displayIcon;
-    QString uninstallString;
-    QString quietUninstallString;
-    QString installLocation;
-};
-
-static QString formatInstallDate(const QString &rawDate)
-{
-    if (rawDate.size() == 8)
-    {
-        const QDate date = QDate::fromString(rawDate, QStringLiteral("yyyyMMdd"));
-        if (date.isValid())
-        {
-            return date.toString(QStringLiteral("yyyy-MM-dd"));
-        }
-    }
-    return rawDate;
-}
-
-static QString normalizeDisplayIconPath(QString value)
-{
-    value = value.trimmed();
-    if (value.isEmpty())
-    {
-        return {};
-    }
-
-    // Common formats:
-    //  - "C:\Path\App.exe",0
-    //  - C:\Path\App.exe
-    //  - C:\Path\App.ico
-    //  - "C:\Path\App.exe"
-    if (value.startsWith(QLatin1Char('"')) && value.endsWith(QLatin1Char('"')))
-    {
-        value = value.mid(1, value.size() - 2);
-    }
-
-    const int comma = value.lastIndexOf(QLatin1Char(','));
-    if (comma > 0)
-    {
-        const QString maybeIndex = value.mid(comma + 1).trimmed();
-        bool ok = false;
-        maybeIndex.toInt(&ok);
-        if (ok)
-        {
-            value = value.left(comma).trimmed();
-            if (value.startsWith(QLatin1Char('"')) && value.endsWith(QLatin1Char('"')))
-            {
-                value = value.mid(1, value.size() - 2);
-            }
-        }
-    }
-
-    return value;
-}
-
-static QIcon iconFromDisplayIcon(const QString &displayIcon)
-{
-    const QString path = normalizeDisplayIconPath(displayIcon);
-    if (path.isEmpty())
-    {
-        return {};
-    }
-
-    // Some entries are command lines; only accept existing files.
-    const QFileInfo fi(path);
-    if (!fi.exists() || !fi.isFile())
-    {
-        return {};
-    }
-
-    QFileIconProvider provider;
-    return provider.icon(fi);
-}
-
-static QString executablePathFromCommandLine(QString value)
-{
-    value = value.trimmed();
-    if (value.isEmpty())
-    {
-        return {};
-    }
-
-    // Strip leading/trailing quotes first.
-    if (value.startsWith(QLatin1Char('"')))
-    {
-        const int endQuote = value.indexOf(QLatin1Char('"'), 1);
-        if (endQuote > 1)
-        {
-            value = value.mid(1, endQuote - 1);
-        }
-    }
-    else
-    {
-        const int firstSpace = value.indexOf(QLatin1Char(' '));
-        if (firstSpace > 0)
-        {
-            value = value.left(firstSpace);
-        }
-    }
-
-    value = value.trimmed();
-    if (value.startsWith(QLatin1Char('"')) && value.endsWith(QLatin1Char('"')) && value.size() >= 2)
-    {
-        value = value.mid(1, value.size() - 2);
-    }
-
-    const QFileInfo fi(value);
-    if (!fi.exists() || !fi.isFile())
-    {
-        return {};
-    }
-    // Not strictly limited to .exe: some entries point to .ico, .dll, etc.
-    return fi.absoluteFilePath();
-}
-
-static QIcon iconFromSoftwareInfo(const InstalledSoftwareInfo &info)
-{
-    if (const QIcon icon = iconFromDisplayIcon(info.displayIcon); !icon.isNull())
-    {
-        return icon;
-    }
-
-    const QString uninstallExe = executablePathFromCommandLine(info.uninstallString);
-    if (!uninstallExe.isEmpty())
-    {
-        QFileIconProvider provider;
-        return provider.icon(QFileInfo(uninstallExe));
-    }
-
-    const QString quietExe = executablePathFromCommandLine(info.quietUninstallString);
-    if (!quietExe.isEmpty())
-    {
-        QFileIconProvider provider;
-        return provider.icon(QFileInfo(quietExe));
-    }
-
-    const QString loc = info.installLocation.trimmed();
-    if (!loc.isEmpty())
-    {
-        const QDir dir(loc);
-        if (dir.exists())
-        {
-            const QFileInfoList exeList = dir.entryInfoList(QStringList() << QStringLiteral("*.exe"),
-                                                            QDir::Files | QDir::NoDotAndDotDot);
-            if (!exeList.isEmpty())
-            {
-                QFileIconProvider provider;
-                return provider.icon(exeList.first());
-            }
-        }
-    }
-
-    return {};
-}
-
-static void appendInstalledSoftwareFromRegistry(const QString &rootPath,
-                                                const QString &sourceLabel,
-                                                QList<InstalledSoftwareInfo> &items,
-                                                QSet<QString> &dedupeKeys)
-{
-    QSettings reg(rootPath, QSettings::NativeFormat);
-    const QStringList subKeys = reg.childGroups();
-    for (const QString &subKey : subKeys)
-    {
-        reg.beginGroup(subKey);
-
-        const QString displayName = reg.value(QStringLiteral("DisplayName")).toString().trimmed();
-        const bool systemComponent = reg.value(QStringLiteral("SystemComponent"), QVariant(0)).toInt() == 1;
-        const QString releaseType = reg.value(QStringLiteral("ReleaseType")).toString();
-        const QString parentKeyName = reg.value(QStringLiteral("ParentKeyName")).toString();
-
-        if (displayName.isEmpty() || systemComponent || !parentKeyName.isEmpty() || releaseType.contains(QStringLiteral("Update"), Qt::CaseInsensitive) || releaseType.contains(QStringLiteral("Hotfix"), Qt::CaseInsensitive))
-        {
-            reg.endGroup();
-            continue;
-        }
-
-        const QString version = reg.value(QStringLiteral("DisplayVersion")).toString().trimmed();
-        const QString publisher = reg.value(QStringLiteral("Publisher")).toString().trimmed();
-        const QString installDate = formatInstallDate(reg.value(QStringLiteral("InstallDate")).toString().trimmed());
-        const QString displayIcon = reg.value(QStringLiteral("DisplayIcon")).toString().trimmed();
-        const QString uninstallString = reg.value(QStringLiteral("UninstallString")).toString().trimmed();
-        const QString quietUninstallString = reg.value(QStringLiteral("QuietUninstallString")).toString().trimmed();
-        const QString installLocation = reg.value(QStringLiteral("InstallLocation")).toString().trimmed();
-
-        const QString dedupeKey = displayName + QLatin1Char('|') + version + QLatin1Char('|') + publisher;
-        if (dedupeKeys.contains(dedupeKey))
-        {
-            reg.endGroup();
-            continue;
-        }
-        dedupeKeys.insert(dedupeKey);
-
-        InstalledSoftwareInfo item;
-        item.name = displayName;
-        item.version = version;
-        item.publisher = publisher;
-        item.installDate = installDate;
-        item.source = sourceLabel;
-        item.displayIcon = displayIcon;
-        item.uninstallString = uninstallString;
-        item.quietUninstallString = quietUninstallString;
-        item.installLocation = installLocation;
-        items.append(item);
-
-        reg.endGroup();
-    }
-}
-
-static QList<InstalledSoftwareInfo> queryInstalledSoftwareList()
-{
-    QList<InstalledSoftwareInfo> items;
-    QSet<QString> dedupeKeys;
-
-    appendInstalledSoftwareFromRegistry(
-        QStringLiteral("HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall"),
-        QStringLiteral("HKLM 64-bit"), items, dedupeKeys);
-    appendInstalledSoftwareFromRegistry(
-        QStringLiteral("HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall"),
-        QStringLiteral("HKLM 32-bit"), items, dedupeKeys);
-    appendInstalledSoftwareFromRegistry(
-        QStringLiteral("HKEY_CURRENT_USER\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall"),
-        QStringLiteral("HKCU"), items, dedupeKeys);
-
-    std::sort(items.begin(), items.end(), [](const InstalledSoftwareInfo &a, const InstalledSoftwareInfo &b)
-              { return a.name.localeAwareCompare(b.name) < 0; });
-    return items;
-}
 
 //=============================================================================
 // Helper Classes
@@ -528,17 +281,29 @@ QIcon createFluentIcon(const QString &unicode, QColor color = QColor())
 //=============================================================================
 
 MainWindow::MainWindow(QWidget *parent)
-    : QMainWindow(parent), ui(new Ui::MainWindow), m_menuBar(nullptr), m_toolBar(nullptr), m_tabShowcaseWidget(nullptr), m_searchAction(nullptr), m_tabBarWidgetBg(nullptr), m_widgetBgMode(WidgetBgMode::None)
+    : QMainWindow(parent),
+    ui(new Ui::MainWindow),
+    m_menuBar(nullptr),
+    m_toolBar(nullptr),
+    m_windowFrame(nullptr),
+    m_tabShowcaseWidget(nullptr),
+    m_searchAction(nullptr),
+    m_tabBarWidgetBg(nullptr),
+    m_widgetBgMode(WidgetBgMode::None)
 {
-    // Setup window attributes
-    setAttribute(Qt::WA_StyledBackground);
+    setObjectName(QStringLiteral("MainWindow"));
+    setAttribute(Qt::WA_DontCreateNativeAncestors);
 
-    // Setup UI
     ui->setupUi(this);
 
-    // Create menu bar
-    m_menuBar = new QMenuBar();
-    setMenuBar(m_menuBar);
+    m_menuBar = new QMenuBar(this);
+    m_menuBar->setObjectName(QStringLiteral("win-menu-bar"));
+
+    m_windowFrame = new FluentWindowFrame(this, this);
+    m_windowFrame->installChromeHeader(m_menuBar);
+    setupTitleBarChrome();
+
+    setWindowIcon(QIcon(":/appicon.ico"));
 
     setWindowTitle(tr("FluentUI Demo - QStyle [%1 | %2 | Qt %3]")
                        .arg(buildConfigurationName(), targetArchitectureName(), QT_VERSION_STR));
@@ -594,6 +359,11 @@ void MainWindow::paintEvent(QPaintEvent *event)
         return;
     }
 
+    if (m_widgetBgMode == WidgetBgMode::DwmBlur)
+    {
+        return;
+    }
+
     if (m_bgLight.isNull() || m_bgDark.isNull())
     {
         return;
@@ -602,12 +372,6 @@ void MainWindow::paintEvent(QPaintEvent *event)
     QPainter painter(this);
     const bool isDark = qApp->property("_q_colorscheme").toInt() == 1;
     painter.drawPixmap(rect(), isDark ? m_bgDark : m_bgLight);
-}
-
-void MainWindow::showEvent(QShowEvent *event)
-{
-    Q_UNUSED(event);
-    // Empty implementation - kept for potential future use
 }
 
 //=============================================================================
@@ -660,16 +424,17 @@ void MainWindow::initializeComponents()
     // Initialize sub-components
     rebuildMenuAndToolBar();
     initializeNavigationView();
-    initializeTableView();
+    m_installedSoftwareTable = new InstalledSoftwareTableWidget(ui->tableWidget, this);
+    m_installedSoftwareTable->initialize();
 
     // Configure background properties
     setProperty("MainBackground", true);
     ui->centralwidget->setProperty("MainBackground", true);
     ui->centralwidget->setAttribute(Qt::WA_TranslucentBackground, true);
     ui->centralwidget->setAttribute(Qt::WA_StyledBackground, true);
-    menuBar()->setAttribute(Qt::WA_TranslucentBackground, true);
-    menuBar()->setAttribute(Qt::WA_StyledBackground, false);
-    menuBar()->setAutoFillBackground(false);
+    m_menuBar->setAttribute(Qt::WA_TranslucentBackground, true);
+    m_menuBar->setAttribute(Qt::WA_StyledBackground, false);
+    m_menuBar->setAutoFillBackground(false);
     m_toolBar->setAttribute(Qt::WA_TranslucentBackground, true);
     m_toolBar->setAttribute(Qt::WA_StyledBackground, false);
     m_toolBar->setAutoFillBackground(false);
@@ -919,7 +684,6 @@ void MainWindow::rebuildMenuAndToolBar()
         m_styleComboBox = nullptr;
         m_tabBarWidgetBg = nullptr;
 
-        removeToolBar(m_toolBar);
         delete m_toolBar;
         m_toolBar = nullptr;
     }
@@ -1023,6 +787,69 @@ void MainWindow::setupToolBarControls(QToolBar *toolBar)
     setupWidgetBackgroundSelector(toolBar);
 }
 
+void MainWindow::setupTitleBarChrome()
+{
+    FluentTitleBar *titleBar = m_windowFrame ? m_windowFrame->titleBar() : nullptr;
+    if (!titleBar)
+    {
+        return;
+    }
+
+#ifdef FLUENT_USE_QT_STYLE
+    const bool isDark = qApp->property("_q_colorscheme").toInt() == 1;
+#else
+    const bool isDark = fluentUIAppearance.theme() == Theme::Dark;
+#endif
+    titleBar->setThemeDark(isDark);
+
+    connect(titleBar->themeButton(), &QToolButton::clicked, this, [this]() {
+#ifdef FLUENT_USE_QT_STYLE
+        const int current = qApp->property("_q_colorscheme").toInt();
+#else
+        const int current = fluentUIAppearance.theme() == Theme::Dark ? 1 : 0;
+#endif
+        applyThemeIndex(current == 1 ? 0 : 1);
+    });
+
+    connect(titleBar->pinButton(), &QToolButton::toggled, this, [this, titleBar](bool checked) {
+        setWindowFlag(Qt::WindowStaysOnTopHint, checked);
+        titleBar->setPinned(checked);
+        show();
+    });
+}
+
+void MainWindow::applyThemeIndex(int index)
+{
+    if (themeComboBox)
+    {
+        themeComboBox->blockSignals(true);
+        themeComboBox->setCurrentIndex(index);
+        themeComboBox->blockSignals(false);
+    }
+
+#ifdef FLUENT_USE_QT_STYLE
+    qApp->setProperty("_q_colorscheme", index);
+    qApp->setStyle(QStringLiteral("FluentUI3"));
+#else
+    fluentUIAppearance.setTheme(index == 0 ? Theme::Light : Theme::Dark);
+#endif
+    updateActionIcons();
+
+    if (index == 0)
+    {
+        ui->rBLightTheme->setChecked(true);
+    }
+    else
+    {
+        ui->rBDarkTheme->setChecked(true);
+    }
+
+    if (FluentTitleBar *titleBar = m_windowFrame ? m_windowFrame->titleBar() : nullptr)
+    {
+        titleBar->setThemeDark(index == 1);
+    }
+}
+
 void MainWindow::setupThemeSelector(QToolBar *toolBar)
 {
     QLabel *themeLabel = new QLabel(tr("主题："), toolBar);
@@ -1044,25 +871,7 @@ void MainWindow::setupThemeSelector(QToolBar *toolBar)
     connect(themeComboBox,
             QOverload<int>::of(&QComboBox::currentIndexChanged),
             this,
-            [this](int index)
-            {
-#ifdef FLUENT_USE_QT_STYLE
-                qApp->setProperty("_q_colorscheme", index);
-                qApp->setStyle("FluentUI3");
-#else
-            fluentUIAppearance.setTheme(index == 0 ? Theme::Light : Theme::Dark);
-#endif
-                updateActionIcons();
-
-                if (index == 0)
-                {
-                    ui->rBLightTheme->setChecked(true);
-                }
-                else
-                {
-                    ui->rBDarkTheme->setChecked(true);
-                }
-            });
+            [this](int index) { applyThemeIndex(index); });
 
     toolBar->addWidget(themeComboBox);
 }
@@ -1126,6 +935,24 @@ void MainWindow::setupStyleSelector(QToolBar *toolBar)
     toolBar->addWidget(m_styleComboBox);
 }
 
+void MainWindow::applyWidgetBgMode(WidgetBgMode mode)
+{
+    m_widgetBgMode = mode;
+    qApp->setProperty("_q_widget_mode", static_cast<int>(mode));
+    refreshFluentStyle();
+
+    if (mode == WidgetBgMode::DwmBlur)
+    {
+        m_windowFrame->setWindowBackdrop(QStringLiteral("dwm-blur"));
+    }
+    else
+    {
+        m_windowFrame->clearWindowBackdrop();
+    }
+
+    update();
+}
+
 void MainWindow::setupWidgetBackgroundSelector(QToolBar *toolBar)
 {
     QLabel *widgetBgLabel = new QLabel(tr("窗口背景："), toolBar);
@@ -1135,6 +962,7 @@ void MainWindow::setupWidgetBackgroundSelector(QToolBar *toolBar)
     m_tabBarWidgetBg->setProperty(TabBarStyleProperty, Segmented_WinUI3);
     m_tabBarWidgetBg->addTab(tr("无"));
     m_tabBarWidgetBg->addTab(tr("图片"));
+    m_tabBarWidgetBg->addTab(tr("DWM blur"));
 
     toolBar->addWidget(m_tabBarWidgetBg);
 
@@ -1143,17 +971,19 @@ void MainWindow::setupWidgetBackgroundSelector(QToolBar *toolBar)
             this,
             [this](int index)
             {
-                m_widgetBgMode = static_cast<WidgetBgMode>(index);
-                qApp->setProperty("_q_widget_mode", index);
-                refreshFluentStyle();
+                applyWidgetBgMode(static_cast<WidgetBgMode>(index));
 
                 if (index == 0)
                 {
                     ui->rBWidgtModeNormal->setChecked(true);
                 }
-                else
+                else if (index == 1)
                 {
                     ui->rBWidgetModePixmap->setChecked(true);
+                }
+                else if (index == 2)
+                {
+                    ui->rBWidgetModeDwmBlur->setChecked(true);
                 }
             });
 }
@@ -1214,75 +1044,6 @@ void MainWindow::addTestNavigationTree()
         {
             QTreeWidgetItem *subChildItem = new QTreeWidgetItem(childItem);
             m_navView->configureNavigationItem(subChildItem, tr("子节点%1-%2").arg(i + 1).arg(j + 1), 6);
-        }
-    }
-}
-
-//=============================================================================
-// Table View
-//=============================================================================
-
-void MainWindow::initializeTableView()
-{
-    QTableWidget *table = ui->tableWidget;
-    table->clear();
-    constexpr int kTableColumnCount = 5;
-    table->setColumnCount(kTableColumnCount);
-
-    QStringList headers;
-    headers << tr("软件名称") << tr("版本") << tr("发布商") << tr("安装日期") << tr("来源");
-    table->setHorizontalHeaderLabels(headers);
-
-    table->verticalHeader()->setMinimumSectionSize(50);
-    table->verticalHeader()->setDefaultSectionSize(50);
-    table->setSelectionMode(QAbstractItemView::ExtendedSelection);
-    table->setSelectionBehavior(QAbstractItemView::SelectRows);
-    // table->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    table->horizontalHeader()->setStretchLastSection(true);
-    table->horizontalHeader()->setDefaultAlignment(Qt::AlignLeft | Qt::AlignVCenter);
-    table->horizontalHeader()->setFixedHeight(50);
-    table->verticalHeader()->setVisible(false);
-    table->setAlternatingRowColors(true);
-    table->setShowGrid(false);
-    table->setIconSize(QSize(20, 20));
-
-    {
-        QFont headerFont = table->horizontalHeader()->font();
-        headerFont.setPixelSize(14);
-        table->horizontalHeader()->setFont(headerFont);
-    }
-
-    const QList<InstalledSoftwareInfo> softwareList = queryInstalledSoftwareList();
-    table->setRowCount(softwareList.size());
-
-    for (int row = 0; row < softwareList.size(); ++row)
-    {
-        const InstalledSoftwareInfo &app = softwareList.at(row);
-        QTableWidgetItem *nameItem = new QTableWidgetItem(app.name);
-        const QIcon appIcon = iconFromSoftwareInfo(app);
-        if (!appIcon.isNull())
-        {
-            nameItem->setIcon(appIcon);
-        }
-        table->setItem(row, 0, nameItem);
-        table->setItem(row, 1, new QTableWidgetItem(app.version.isEmpty() ? QStringLiteral("-") : app.version));
-        table->setItem(row, 2, new QTableWidgetItem(app.publisher.isEmpty() ? QStringLiteral("-") : app.publisher));
-        table->setItem(row, 3, new QTableWidgetItem(app.installDate.isEmpty() ? QStringLiteral("-") : app.installDate));
-        table->setItem(row, 4, new QTableWidgetItem(app.source));
-    }
-
-    table->resizeColumnsToContents();
-    if (!softwareList.isEmpty())
-    {
-        table->selectRow(0);
-    }
-    else
-    {
-        table->setRowCount(1);
-        table->setItem(0, 0, new QTableWidgetItem(tr("未读取到安装软件信息")));
-        for (int col = 1; col < table->columnCount(); ++col)
-        {
-            table->setItem(0, col, new QTableWidgetItem(QStringLiteral("-")));
         }
     }
 }
@@ -1725,19 +1486,18 @@ void QComboBox::contextMenuEvent(QContextMenuEvent *event)
 
 void QAbstractSpinBox::contextMenuEvent(QContextMenuEvent *event)
 {
-    Q_D(QAbstractSpinBox);
-    QPointer<QMenu> menu = d->edit->createStandardContextMenu();
+    QLineEdit *edit = findChild<QLineEdit *>();
+    if (!edit)
+    {
+        return;
+    }
+
+    QPointer<QMenu> menu = edit->createStandardContextMenu();
     if (!menu)
     {
         return;
     }
 
-    QAction *selectAllAction = new QAction(tr("&Select All"), menu);
-#if QT_CONFIG(shortcut)
-    selectAllAction->setShortcut(QKeySequence::SelectAll);
-#endif
-    menu->insertAction(d->edit->d_func()->selectAllAction, selectAllAction);
-    menu->removeAction(d->edit->d_func()->selectAllAction);
     menu->addSeparator();
 
     const uint se = stepEnabled();
@@ -1745,7 +1505,6 @@ void QAbstractSpinBox::contextMenuEvent(QContextMenuEvent *event)
     stepUpAction->setEnabled(se & StepUpEnabled);
     QAction *stepDownAction = menu->addAction(tr("Step &down"));
     stepDownAction->setEnabled(se & StepDownEnabled);
-    menu->addSeparator();
 
     applyStandardMenuIcons(menu, this);
 
@@ -1765,61 +1524,10 @@ void QAbstractSpinBox::contextMenuEvent(QContextMenuEvent *event)
         {
             stepBy(-1);
         }
-        else if (action == selectAllAction)
-        {
-            selectAll();
-        }
     }
     event->accept();
 }
 #endif
-
-//=============================================================================
-// Leave Event Helper
-//=============================================================================
-
-static inline void emulateLeaveEvent(QWidget *widget)
-{
-    Q_ASSERT(widget);
-    if (!widget)
-    {
-        return;
-    }
-
-    QTimer::singleShot(0,
-                       widget,
-                       [widget]()
-                       {
-#if (QT_VERSION >= QT_VERSION_CHECK(5, 14, 0))
-                           const QScreen *screen = widget->screen();
-#else
-            const QScreen *screen = widget->windowHandle()->screen();
-#endif
-                           const QPoint globalPos = QCursor::pos(screen);
-                           if (!QRect(widget->mapToGlobal(QPoint{0, 0}), widget->size()).contains(globalPos))
-                           {
-                               QCoreApplication::postEvent(widget, new QEvent(QEvent::Leave));
-                               if (widget->testAttribute(Qt::WA_Hover))
-                               {
-                                   const QPoint localPos = widget->mapFromGlobal(globalPos);
-                                   const QPoint scenePos = widget->window()->mapFromGlobal(globalPos);
-                                   static constexpr const QPoint oldPos;
-                                   const Qt::KeyboardModifiers modifiers = QGuiApplication::keyboardModifiers();
-#if (QT_VERSION >= QT_VERSION_CHECK(6, 4, 0))
-                                   const auto hoverEvent = new QHoverEvent(QEvent::HoverLeave, scenePos, globalPos, oldPos, modifiers);
-                                   Q_UNUSED(localPos);
-#elif (QT_VERSION >= QT_VERSION_CHECK(6, 3, 0))
-                    const auto hoverEvent = new QHoverEvent(QEvent::HoverLeave, localPos, globalPos, oldPos, modifiers);
-                    Q_UNUSED(scenePos);
-#else
-                    const auto hoverEvent = new QHoverEvent(QEvent::HoverLeave, localPos, oldPos, modifiers);
-                    Q_UNUSED(scenePos);
-#endif
-                                   QCoreApplication::postEvent(widget, hoverEvent);
-                               }
-                           }
-                       });
-}
 
 void MainWindow::on_rBLightTheme_clicked(bool checked)
 {
@@ -1849,6 +1557,12 @@ void MainWindow::on_rBWidgetModePixmap_clicked(bool checked)
 {
     Q_UNUSED(checked)
     m_tabBarWidgetBg->setCurrentIndex(1);
+}
+
+void MainWindow::on_rBWidgetModeDwmBlur_clicked(bool checked)
+{
+    Q_UNUSED(checked)
+    m_tabBarWidgetBg->setCurrentIndex(2);
 }
 
 void MainWindow::on_rBOnlyIcon_clicked(bool checked)

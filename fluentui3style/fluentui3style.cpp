@@ -2329,6 +2329,39 @@ void FluentUI3Style::drawSpecialButton(QPainter *painter, const QStyleOption *op
             return;
         }
     }
+    else if (objectName == "win_caption_minimize" || objectName == "win_caption_maximize"
+             || objectName == "win_caption_theme" || objectName == "win_caption_pin")
+    {
+        isReturn = true;
+        if (isDown)
+        {
+            painter->setBrush(winUI3Color(subtlePressedColor));
+        }
+        else if (isHover)
+        {
+            painter->setBrush(winUI3Color(subtleHighlightColor));
+        }
+        else
+        {
+            return;
+        }
+    }
+    else if (objectName == "win_caption_close")
+    {
+        isReturn = true;
+        if (isDown)
+        {
+            painter->setBrush(shellCaptionCloseFillColorSecondary);
+        }
+        else if (isHover)
+        {
+            painter->setBrush(shellCaptionCloseFillColorPrimary);
+        }
+        else
+        {
+            return;
+        }
+    }
     else if (objectName == "ScrollLeftButton" || objectName == "ScrollRightButton")
     {
         isReturn = true;
@@ -2955,7 +2988,7 @@ void FluentUI3Style::drawPrimitive(PrimitiveElement element, const QStyleOption 
                 // Example项目:
                 // WidgetBgMode::Pixmap 会把 Base/Window 设为透明，这里保留最低透明度避免 card 过深或过透。
                 //不需要的话，直接使用cardColor即可
-                const bool wallpaperMode = qApp && qApp->property("_q_widget_mode").toBool();
+                const bool wallpaperMode = qApp && qApp->property("_q_widget_mode").toInt() >= 1;
                 if (wallpaperMode)
                 {
                     const int minAlpha = (colorSchemeIndex == 1) ? 72 : 92;
@@ -5320,7 +5353,16 @@ void FluentUI3Style::drawControl(ControlElement element, const QStyleOption *opt
                 const QString text = toolButtonElideText(toolbutton, rect, alignment);
                 // option->state has no State_Sunken here,
                 // windowsvistastyle/CC_ToolButton removes it
-                painter->setPen(controlTextColor(option));
+                if (widget && widget->objectName() == QLatin1String("win_caption_close")
+                    && (widget->underMouse() || (toolbutton->state & State_Sunken)))
+                {
+                    painter->setPen((toolbutton->state & State_Sunken) ? shellCaptionCloseTextFillColorSecondary
+                                                                       : shellCaptionCloseTextFillColorPrimary);
+                }
+                else
+                {
+                    painter->setPen(controlTextColor(option));
+                }
                 proxy()->drawItemText(painter, rect, alignment, toolbutton->palette, toolbutton->state & State_Enabled, text);
             }
             else

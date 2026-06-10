@@ -56,7 +56,7 @@
        <enum>QFrame::Sunken</enum>
       </property>
       <property name="currentIndex">
-       <number>0</number>
+       <number>6</number>
       </property>
       <widget class="QWidget" name="page">
        <property name="autoFillBackground">
@@ -90,7 +90,7 @@
            <property name="geometry">
             <rect>
              <x>0</x>
-             <y>-322</y>
+             <y>0</y>
              <width>1160</width>
              <height>1073</height>
             </rect>
@@ -1752,8 +1752,8 @@ li.checked::marker { content: &quot;\2612&quot;; }
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>140</width>
-             <height>474</height>
+             <width>1177</width>
+             <height>751</height>
             </rect>
            </property>
            <property name="autoFillBackground">
@@ -1858,13 +1858,6 @@ li.checked::marker { content: &quot;\2612&quot;; }
               <item>
                <widget class="QWidget" name="widgetWidgetMode" native="true">
                 <layout class="QGridLayout" name="gridLayout_27">
-                 <item row="1" column="0">
-                  <widget class="QRadioButton" name="rBWidgetModePixmap">
-                   <property name="text">
-                    <string>图片</string>
-                   </property>
-                  </widget>
-                 </item>
                  <item row="0" column="0">
                   <widget class="QRadioButton" name="rBWidgtModeNormal">
                    <property name="text">
@@ -1872,6 +1865,20 @@ li.checked::marker { content: &quot;\2612&quot;; }
                    </property>
                    <property name="checked">
                     <bool>true</bool>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="0">
+                  <widget class="QRadioButton" name="rBWidgetModePixmap">
+                   <property name="text">
+                    <string>图片</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="0">
+                  <widget class="QRadioButton" name="rBWidgetModeDwmBlur">
+                   <property name="text">
+                    <string>dwm-blur</string>
                    </property>
                   </widget>
                  </item>

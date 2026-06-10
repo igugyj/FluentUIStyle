@@ -15,6 +15,8 @@ class ExStackedWidget;
 class QComboBox;
 class QTreeWidgetItem;
 class TabShowcaseWidget;
+class InstalledSoftwareTableWidget;
+class FluentWindowFrame;
 
 QT_BEGIN_NAMESPACE
 
@@ -28,7 +30,8 @@ QT_END_NAMESPACE
 enum class WidgetBgMode
 {
     None,
-    Pixmap
+    Pixmap,
+    DwmBlur
 };
 
 class MainWindow : public QMainWindow
@@ -42,8 +45,7 @@ public:
     // QWidget interface
 
 protected:
-    void paintEvent(QPaintEvent *event);
-    void showEvent(QShowEvent *event);
+    void paintEvent(QPaintEvent *event) override;
 
 private slots:
     void on_checkBox_4_clicked(bool checked);
@@ -58,6 +60,7 @@ private slots:
 
     void on_rBWidgtModeNormal_clicked(bool checked);
     void on_rBWidgetModePixmap_clicked(bool checked);
+    void on_rBWidgetModeDwmBlur_clicked(bool checked);
 
     void on_rBOnlyIcon_clicked(bool checked);
     void on_rBIconAndText_clicked(bool checked);
@@ -70,7 +73,6 @@ private:
     void initializeFluentBorderWidgets();
     void initializeComponents();
     void setupComboBox();
-    void initializeTableView();
     void initializeNavigationView();
     void rebuildMenuAndToolBar();
     void buildMainMenus();
@@ -92,10 +94,13 @@ private:
                               const QString &text,
                               const QKeySequence &shortcut = QKeySequence());
     void setupToolBarControls(QToolBar *toolBar);
+    void setupTitleBarChrome();
+    void applyThemeIndex(int index);
     void setupThemeSelector(QToolBar *toolBar);
     void setupColorSchemeSelector(QToolBar *toolBar);
     void setupStyleSelector(QToolBar *toolBar);
     void setupWidgetBackgroundSelector(QToolBar *toolBar);
+    void applyWidgetBgMode(WidgetBgMode mode);
 
     // Navigation View helpers
     void addTestNavigationTree();
@@ -117,8 +122,10 @@ private:
 
     QMenuBar *m_menuBar{nullptr};
     QToolBar *m_toolBar{nullptr};
+    FluentWindowFrame *m_windowFrame{nullptr};
 
     TabShowcaseWidget *m_tabShowcaseWidget{nullptr};
+    InstalledSoftwareTableWidget *m_installedSoftwareTable{nullptr};
     ExNavTreeWidget *m_navView{nullptr};
     ExWinUINavigationView *m_winUINavigationView{nullptr};
     QAction *m_searchAction{nullptr};
