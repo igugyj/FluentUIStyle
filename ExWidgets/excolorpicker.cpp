@@ -1374,7 +1374,7 @@ void ExColorPicker::showPopup(QWidget *anchor)
 
     adjustSize();
     const QPoint anchorTopLeft = anchor->mapToGlobal(QPoint(0, 0));
-    move(anchorTopLeft.x(), anchorTopLeft.y() - height());
+    move(anchorTopLeft.x() - 6, anchorTopLeft.y() - height());
     show();
     raise();
     activateWindow();

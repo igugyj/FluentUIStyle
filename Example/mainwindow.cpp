@@ -127,6 +127,32 @@ static void refreshFluentStyle()
 #endif
 }
 
+namespace {
+
+QString buildConfigurationName()
+{
+#ifdef NDEBUG
+    return QStringLiteral("Release");
+#else
+    return QStringLiteral("Debug");
+#endif
+}
+
+QString targetArchitectureName()
+{
+#if defined(_M_X64) || defined(__x86_64__) || defined(__amd64__)
+    return QStringLiteral("x64");
+#elif defined(_M_IX86) || defined(__i386__)
+    return QStringLiteral("x86");
+#elif defined(_M_ARM64) || defined(__aarch64__)
+    return QStringLiteral("ARM64");
+#else
+    return QStringLiteral("UnknownArch");
+#endif
+}
+
+} // namespace
+
 //=============================================================================
 // Global Variables
 //=============================================================================
@@ -514,7 +540,8 @@ MainWindow::MainWindow(QWidget *parent)
     m_menuBar = new QMenuBar();
     setMenuBar(m_menuBar);
 
-    setWindowTitle(tr("FluentUI Demo - QStyle [Qt-Version %1]").arg(QT_VERSION_STR));
+    setWindowTitle(tr("FluentUI Demo - QStyle [%1 | %2 | Qt %3]")
+                       .arg(buildConfigurationName(), targetArchitectureName(), QT_VERSION_STR));
 
     // Install menu offset filter
     qApp->installEventFilter(new MenuOffsetFilter(qApp));
