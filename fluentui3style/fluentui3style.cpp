@@ -41,6 +41,12 @@
 #include <QMessageBox>
 #include <QVariant>
 #include <QDial>
+#include <QFrame>
+#include <QLabel>
+#include <QSlider>
+#include <QStyleOptionFrame>
+#include <QStyleOptionSlider>
+#include <QStylePainter>
 
 #include <array>
 
@@ -84,6 +90,147 @@ static constexpr int NavigationIconRole = Qt::UserRole + 1;
 
 static constexpr int toolTipShadowBorderWidth = 2;
 static constexpr int toolTipContentPadding = 4;
+static constexpr int kSliderValueTipGapAboveHandle = 4;
+
+class SliderValueTipLabel : public QLabel
+{
+public:
+    explicit SliderValueTipLabel(QWidget *parent)
+        : QLabel(parent)
+    {
+        setWindowFlags(Qt::ToolTip | Qt::FramelessWindowHint | Qt::BypassGraphicsProxyWidget);
+        setAttribute(Qt::WA_TranslucentBackground);
+        setAttribute(Qt::WA_ShowWithoutActivating);
+        setFrameStyle(QFrame::NoFrame);
+        setAlignment(Qt::AlignCenter);
+
+        QFont tipFont = QApplication::font();
+        tipFont.setHintingPreference(QFont::PreferNoHinting);
+        setFont(tipFont);
+        setMargin(1 + style()->pixelMetric(QStyle::PM_ToolTipLabelFrameWidth, nullptr, this));
+    }
+
+protected:
+    void paintEvent(QPaintEvent *ev) override
+    {
+        QStylePainter p(this);
+        QStyleOptionFrame opt;
+        opt.initFrom(this);
+        p.drawPrimitive(QStyle::PE_PanelTipLabel, opt);
+        p.end();
+
+        QLabel::paintEvent(ev);
+    }
+};
+
+static void initSliderStyleOption(const QSlider *slider, QStyleOptionSlider *opt, int position)
+{
+    opt->initFrom(slider);
+    opt->subControls = QStyle::SC_None;
+    opt->activeSubControls = QStyle::SC_None;
+    opt->orientation = slider->orientation();
+    opt->minimum = slider->minimum();
+    opt->maximum = slider->maximum();
+    opt->tickPosition = slider->tickPosition();
+    opt->tickInterval = slider->tickInterval();
+    opt->upsideDown = (slider->orientation() == Qt::Horizontal)
+                          ? (slider->invertedAppearance() != (opt->direction == Qt::RightToLeft))
+                          : (!slider->invertedAppearance());
+    opt->direction = Qt::LeftToRight;
+    opt->sliderPosition = position;
+    opt->sliderValue = position;
+    opt->singleStep = slider->singleStep();
+    opt->pageStep = slider->pageStep();
+    if (slider->orientation() == Qt::Horizontal)
+        opt->state |= QStyle::State_Horizontal;
+}
+
+static SliderValueTipLabel *sliderValueTip(QSlider *slider)
+{
+    QObject *const obj = slider->property("_q_slider_value_tip").value<QObject *>();
+    return obj ? static_cast<SliderValueTipLabel *>(obj) : nullptr;
+}
+
+static bool sliderValueTipEnabled(const QWidget *widget)
+{
+    if (!widget)
+        return true;
+    const QVariant v = widget->property(SliderValueTipProperty);
+    return !v.isValid() || v.toBool();
+}
+
+static void showSliderValueTip(QSlider *slider, int value)
+{
+    if (!sliderValueTipEnabled(slider) || !slider->isEnabled() || !slider->isVisible())
+        return;
+
+    auto *tip = sliderValueTip(slider);
+    if (!tip)
+    {
+        tip = new SliderValueTipLabel(nullptr);
+        tip->setObjectName(QStringLiteral("_q_slider_value_tip"));
+        slider->setProperty("_q_slider_value_tip", QVariant::fromValue<QObject *>(tip));
+        QObject::connect(slider, &QObject::destroyed, tip, &QObject::deleteLater);
+        if (auto *style = qobject_cast<FluentUI3Style *>(QApplication::style()))
+            style->polish(tip);
+    }
+
+    tip->setText(QString::number(value));
+    tip->adjustSize();
+
+    QStyleOptionSlider opt;
+    initSliderStyleOption(slider, &opt, value);
+    const QRect handleRect = slider->style()->subControlRect(QStyle::CC_Slider, &opt, QStyle::SC_SliderHandle, slider);
+    if (!handleRect.isValid())
+        return;
+    const qreal outerRadius = qMin(10.0, (slider->orientation() == Qt::Horizontal ? handleRect.height() / 2.0 : handleRect.width() / 2.0) - 1.0);
+    const QPoint globalCenter = slider->mapToGlobal(handleRect.center());
+    int x = 0;
+    int y = 0;
+    if (slider->orientation() == Qt::Horizontal)
+    {
+        x = globalCenter.x() - tip->width() / 2;
+        y = globalCenter.y() - static_cast<int>(outerRadius) - kSliderValueTipGapAboveHandle - tip->height();
+    }
+    else
+    {
+        x = globalCenter.x() - static_cast<int>(outerRadius) - kSliderValueTipGapAboveHandle - tip->width();
+        y = globalCenter.y() - tip->height() / 2;
+    }
+    tip->move(x, y);
+    tip->raise();
+    tip->show();
+}
+
+static void hideSliderValueTip(QSlider *slider)
+{
+    if (auto *tip = sliderValueTip(slider))
+        tip->hide();
+}
+
+static void installSliderValueTipHooks(QSlider *slider)
+{
+    if (slider->property("_q_slider_value_tip_hooks").toBool())
+        return;
+    slider->setProperty("_q_slider_value_tip_hooks", true);
+
+    QObject::connect(slider, &QSlider::sliderPressed, slider,
+                     [slider]()
+                     {
+                         showSliderValueTip(slider, slider->sliderPosition());
+                     });
+    QObject::connect(slider, &QSlider::sliderMoved, slider,
+                     [slider](int value)
+                     {
+                         if (QApplication::mouseButtons() & Qt::LeftButton)
+                             showSliderValueTip(slider, value);
+                     });
+    QObject::connect(slider, &QSlider::sliderReleased, slider,
+                     [slider]()
+                     {
+                         hideSliderValueTip(slider);
+                     });
+}
 
 static QColor segmentedColorFromVariant(const QVariant &v, const QColor &fallback)
 {
@@ -7345,6 +7492,9 @@ void FluentUI3Style::polish(QWidget *widget)
         widget->installEventFilter(this);
     }
 
+    if (auto *slider = qobject_cast<QSlider *>(widget))
+        installSliderValueTipHooks(slider);
+
     ///没有动态更新主题的需求，可屏蔽
     if (auto le = qobject_cast<QLineEdit *>(widget))
     {
@@ -7534,6 +7684,11 @@ void FluentUI3Style::unpolish(QWidget *widget)
     if (!qobject_cast<QCommandLinkButton *>(widget))
 #endif // QT_CONFIG(commandlinkbutton)
         QProxyStyle::unpolish(widget);
+
+    if (qobject_cast<QDial *>(widget))
+        widget->removeEventFilter(this);
+    if (auto *slider = qobject_cast<QSlider *>(widget))
+        hideSliderValueTip(slider);
 
     if (qobject_cast<QTabBar *>(widget) && widget->property("TabBarStyle").toInt() == TabBarStyle::Segmented_WinUI3)
     {
