@@ -64,7 +64,7 @@ install(TARGETS ExWidgets
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
 
-install(FILES # patched: $<TARGET_PDB_FILE:ExWidgets>
+install(FILES # patched: # patched: $<TARGET_PDB_FILE:ExWidgets>
     DESTINATION ${CMAKE_INSTALL_BINDIR}
     OPTIONAL
 )
@@ -77,7 +77,7 @@ if(BUILD_LIBRARY)
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
     )
 
-    install(FILES # patched: $<TARGET_PDB_FILE:FluentUI3Style>
+    install(FILES # patched: # patched: $<TARGET_PDB_FILE:FluentUI3Style>
         DESTINATION ${CMAKE_INSTALL_BINDIR}
         OPTIONAL
     )
