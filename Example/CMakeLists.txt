@@ -15,6 +15,8 @@ set(EXAMPLE_SOURCES
     dialogshowcasewidget.h
     colorshowcasewidget.cpp
     colorshowcasewidget.h
+    rangeslidershowcasewidget.cpp
+    rangeslidershowcasewidget.h
     aboutprojectwidget.cpp
     aboutprojectwidget.h
     segoeicongallerywidget.cpp
@@ -129,6 +131,7 @@ if(WIN32 AND EXAMPLE_LUPDATE)
             "${CMAKE_CURRENT_SOURCE_DIR}/tabshowcasewidget.cpp"
             "${CMAKE_CURRENT_SOURCE_DIR}/dialogshowcasewidget.cpp"
             "${CMAKE_CURRENT_SOURCE_DIR}/colorshowcasewidget.cpp"
+            "${CMAKE_CURRENT_SOURCE_DIR}/rangeslidershowcasewidget.cpp"
             "${CMAKE_CURRENT_SOURCE_DIR}/main.cpp"
             "${CMAKE_CURRENT_SOURCE_DIR}/applanguage.cpp"
             -ts

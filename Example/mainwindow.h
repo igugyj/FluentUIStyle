@@ -16,7 +16,6 @@ class QComboBox;
 class QTreeWidgetItem;
 class TabShowcaseWidget;
 class InstalledSoftwareTableWidget;
-class ExRangeSlider;
 class FluentWindowFrame;
 
 QT_BEGIN_NAMESPACE
@@ -130,9 +129,7 @@ private:
 
     TabShowcaseWidget *m_tabShowcaseWidget{nullptr};
     InstalledSoftwareTableWidget *m_installedSoftwareTable{nullptr};
-    QFrame *m_exRangeSliderPage{nullptr};
     QFrame *m_audiomaticPlayerPage{nullptr};
-    ExRangeSlider *m_rangeSelector{nullptr};
     ExNavTreeWidget *m_navView{nullptr};
     ExWinUINavigationView *m_winUINavigationView{nullptr};
     QAction *m_searchAction{nullptr};

@@ -81,7 +81,6 @@
 #include <QButtonGroup>
 
 // Project Headers
-#include <exrangeslider.h>
 #include <exstackedwidget.h>
 #include <exnavtreewidget.h>
 #include <exmessagebox.h>
@@ -93,6 +92,7 @@
 #include "tabshowcasewidget.h"
 #include "dialogshowcasewidget.h"
 #include "colorshowcasewidget.h"
+#include "rangeslidershowcasewidget.h"
 #include "fluentui3styleproperties.h"
 #include "frameless/fluenttitlebar.h"
 #include "frameless/fluentwindowframe.h"
@@ -1243,37 +1243,9 @@ void MainWindow::setupExWidgetsPages()
         return;
     }
 
-    m_exRangeSliderPage = new QFrame(ui->stackedWidget);
-    m_exRangeSliderPage->setFrameShape(QFrame::StyledPanel);
-    m_exRangeSliderPage->setObjectName(QStringLiteral("pageExRangeSlider"));
-
-    auto *layout = new QVBoxLayout(m_exRangeSliderPage);
-    layout->setContentsMargins(24, 24, 24, 24);
-    layout->setSpacing(16);
-
-    auto *title = new QLabel(tr("ExRangeSlider"), m_exRangeSliderPage);
-    QFont titleFont = title->font();
-    titleFont.setPointSize(18);
-    titleFont.setBold(true);
-    title->setFont(titleFont);
-
-    m_rangeSelector = new ExRangeSlider(m_exRangeSliderPage);
-    m_rangeSelector->setObjectName(QStringLiteral("rangeSelector"));
-    m_rangeSelector->setMinimumHeight(32);
-    m_rangeSelector->setProperty(SliderValueTipProperty, true);
-    m_rangeSelector->setRange(0, 100);
-    m_rangeSelector->setValues(20, 80);
-    m_rangeSelector->setSingleStep(1);
-    m_rangeSelector->setPageStep(10);
-    connect(m_rangeSelector, &ExRangeSlider::valuesChanged, this, [](int lower, int upper) {
-        qDebug() << "Range slider values changed:" << lower << upper;
-    });
-
-    layout->addWidget(title);
-    layout->addWidget(m_rangeSelector);
-    layout->addStretch();
-
-    ui->stackedWidget->addWidget(m_exRangeSliderPage);
+    auto *page = new RangeSliderShowcaseWidget(ui->stackedWidget);
+    page->setObjectName(QStringLiteral("pageExRangeSlider"));
+    ui->stackedWidget->addWidget(page);
 }
 
 void MainWindow::setupAudiomaticPlayerPage()
@@ -1303,12 +1275,18 @@ void MainWindow::setupAudiomaticPlayerPage()
 
 void MainWindow::addExWidgetsNavigation()
 {
-    if (!m_navView || !ui->stackedWidget || !m_exRangeSliderPage)
+    if (!m_navView || !ui->stackedWidget)
     {
         return;
     }
 
-    const int rangeSliderPageIndex = ui->stackedWidget->indexOf(m_exRangeSliderPage);
+    QWidget *rangeSliderPage = ui->stackedWidget->findChild<QWidget *>(QStringLiteral("pageExRangeSlider"));
+    const int rangeSliderPageIndex = rangeSliderPage ? ui->stackedWidget->indexOf(rangeSliderPage) : -1;
+    if (rangeSliderPageIndex < 0)
+    {
+        return;
+    }
+
     QWidget *colorPickerPage = ui->stackedWidget->findChild<QWidget *>(QStringLiteral("pageColorPicker"));
     const int colorPickerPageIndex = colorPickerPage ? ui->stackedWidget->indexOf(colorPickerPage) : -1;
     const int audiomaticPageIndex = m_audiomaticPlayerPage ? ui->stackedWidget->indexOf(m_audiomaticPlayerPage) : -1;

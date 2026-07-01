@@ -24,14 +24,16 @@ SOURCES += main.cpp \
            font-icon/fonticon.cpp \
            aboutprojectwidget.cpp \
            segoeicongallerywidget.cpp \
-           colorshowcasewidget.cpp
+           colorshowcasewidget.cpp \
+           rangeslidershowcasewidget.cpp
 HEADERS += mainwindow.h \
            tabshowcasewidget.h \
            dialogshowcasewidget.h \
            font-icon/fonticon.h \
            aboutprojectwidget.h \
            segoeicongallerywidget.h \
-           colorshowcasewidget.h
+           colorshowcasewidget.h \
+           rangeslidershowcasewidget.h
 FORMS   += mainwindow.ui
 
 win32 {
