@@ -52,7 +52,7 @@
         <string/>
        </property>
        <property name="alignment">
-        <set>Qt::AlignCenter</set>
+        <set>Qt::AlignmentFlag::AlignCenter</set>
        </property>
       </widget>
      </item>
@@ -80,7 +80,7 @@
      <item>
       <widget class="QSlider" name="sliderPosition">
        <property name="orientation">
-        <enum>Qt::Horizontal</enum>
+        <enum>Qt::Orientation::Horizontal</enum>
        </property>
        <property name="showValueTip" stdset="0">
         <bool>false</bool>
@@ -101,7 +101,7 @@
      <item>
       <spacer name="transportSpacerLeft">
        <property name="orientation">
-        <enum>Qt::Horizontal</enum>
+        <enum>Qt::Orientation::Horizontal</enum>
        </property>
        <property name="sizeHint" stdset="0">
         <size>
@@ -201,7 +201,7 @@
      <item>
       <spacer name="transportSpacerRight">
        <property name="orientation">
-        <enum>Qt::Horizontal</enum>
+        <enum>Qt::Orientation::Horizontal</enum>
        </property>
        <property name="sizeHint" stdset="0">
         <size>
@@ -228,7 +228,7 @@
         <number>80</number>
        </property>
        <property name="orientation">
-        <enum>Qt::Horizontal</enum>
+        <enum>Qt::Orientation::Horizontal</enum>
        </property>
        <property name="showValueTip" stdset="0">
         <bool>true</bool>
@@ -252,7 +252,7 @@
       </size>
      </property>
      <property name="currentIndex">
-      <number>1</number>
+      <number>0</number>
      </property>
      <widget class="QWidget" name="tabSpectrum">
       <attribute name="title">
@@ -260,13 +260,13 @@
       </attribute>
       <layout class="QVBoxLayout" name="spectrumTabLayout">
        <property name="leftMargin">
-        <number>0</number>
+        <number>2</number>
        </property>
        <property name="topMargin">
         <number>0</number>
        </property>
        <property name="rightMargin">
-        <number>0</number>
+        <number>2</number>
        </property>
        <property name="bottomMargin">
         <number>0</number>
@@ -289,13 +289,13 @@
       </attribute>
       <layout class="QVBoxLayout" name="playlistTabLayout">
        <property name="leftMargin">
-        <number>0</number>
+        <number>2</number>
        </property>
        <property name="topMargin">
         <number>0</number>
        </property>
        <property name="rightMargin">
-        <number>0</number>
+        <number>2</number>
        </property>
        <property name="bottomMargin">
         <number>0</number>
@@ -306,7 +306,89 @@
           <bool>false</bool>
          </property>
          <property name="selectionMode">
-          <enum>QAbstractItemView::SingleSelection</enum>
+          <enum>QAbstractItemView::SelectionMode::SingleSelection</enum>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="tabOnline">
+      <attribute name="title">
+       <string>在线</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="onlineTabLayout">
+       <property name="leftMargin">
+        <number>2</number>
+       </property>
+       <property name="topMargin">
+        <number>0</number>
+       </property>
+       <property name="rightMargin">
+        <number>2</number>
+       </property>
+       <property name="bottomMargin">
+        <number>0</number>
+       </property>
+       <item>
+        <layout class="QHBoxLayout" name="onlineSearchLayout">
+         <item>
+          <widget class="QLineEdit" name="lineJamendoSearch">
+           <property name="placeholderText">
+            <string>搜索 Jamendo 免费音乐…</string>
+           </property>
+           <property name="clearButtonEnabled">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="btnJamendoSearch">
+           <property name="text">
+            <string>搜索</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="onlineDiscoverLayout">
+         <item>
+          <widget class="QPushButton" name="btnJamendoWeekly">
+           <property name="text">
+            <string>本周热榜</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="btnJamendoEditorial">
+           <property name="text">
+            <string>编辑精选</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="btnJamendoRadios">
+           <property name="text">
+            <string>电台</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <widget class="QLabel" name="labelJamendoHint">
+         <property name="text">
+          <string>Jamendo 开放音乐 · 需在设置中配置 Client ID</string>
+         </property>
+         <property name="wordWrap">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QListWidget" name="listJamendoResults">
+         <property name="selectionMode">
+          <enum>QAbstractItemView::SelectionMode::SingleSelection</enum>
          </property>
         </widget>
        </item>
@@ -329,7 +411,7 @@
      <item>
       <spacer name="footerSpacer">
        <property name="orientation">
-        <enum>Qt::Horizontal</enum>
+        <enum>Qt::Orientation::Horizontal</enum>
        </property>
        <property name="sizeHint" stdset="0">
         <size>

@@ -4,6 +4,8 @@ set(AUDIOMATIC_MINI_WIDGET_SOURCES
     audiomaticplayerwidget.ui
     audiospectrumanalyzer.cpp
     audiospectrumanalyzer.h
+    jamendoclient.cpp
+    jamendoclient.h
     spectrumwidget.cpp
     spectrumwidget.h
     sinewavegenerator.cpp
@@ -23,6 +25,7 @@ target_link_libraries(AudiomaticMiniWidgets PUBLIC
     Qt${QT_VERSION_MAJOR}::Gui
     Qt${QT_VERSION_MAJOR}::Widgets
     Qt${QT_VERSION_MAJOR}::Multimedia
+    Qt${QT_VERSION_MAJOR}::Network
     kissfft
     ${FLUENT_QT_PRIVATE_LIBS}
 )
@@ -69,6 +72,7 @@ if(BUILD_AUDIOMATIC_MINI)
         Qt${QT_VERSION_MAJOR}::Widgets
         Qt${QT_VERSION_MAJOR}::Svg
         Qt${QT_VERSION_MAJOR}::Multimedia
+        Qt${QT_VERSION_MAJOR}::Network
         ${FLUENT_QT_PRIVATE_LIBS}
     )
 

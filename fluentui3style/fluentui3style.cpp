@@ -5960,6 +5960,8 @@ void FluentUI3Style::drawControl(ControlElement element, const QStyleOption *opt
 
             auto vTextRect = visualRect(btn->direction, btn->rect, textRect);
             bool accent = widget && widget->property(ButtonAccentStyleProperty).toBool();
+            //TODO， dark模式下，accent 字体是黑色，看着比较刺眼，有accent2，字体改成白色
+            bool accent2 = widget && widget->property("accent2").toBool();
 
             bool checkable = false, checked = false;
             if (const auto *button = qobject_cast<const QPushButton *>(widget))
@@ -5973,8 +5975,7 @@ void FluentUI3Style::drawControl(ControlElement element, const QStyleOption *opt
                 QStyleOption opt = *option;
                 opt.state |= QStyle::State_On;
                 QColor penCol = option->state.testFlag(QStyle::State_Enabled) ? winUI3Color(textOnAccentPrimary) : winUI3Color(textOnAccentDisabled);
-                // penCol.setAlphaF(colorSchemeIndex == 1 ? 0.7 : 1);
-                painter->setPen(/*controlTextColor(&opt, QPalette::Window)*/ penCol);
+                painter->setPen(penCol);
             }
             else
             {

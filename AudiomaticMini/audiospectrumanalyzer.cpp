@@ -189,6 +189,11 @@ void AudioSpectrumAnalyzer::onBufferReady()
     {
         processBuffer();
     }
+
+    if (m_active)
+    {
+        feedPlaybackChunk();
+    }
 }
 
 void AudioSpectrumAnalyzer::onDecoderFinished()
@@ -204,17 +209,41 @@ void AudioSpectrumAnalyzer::feedPlaybackChunk()
     }
 
     const int totalSamples = totalSampleCount();
-    if (m_samplePosition >= totalSamples)
+    if (totalSamples <= 0)
     {
         return;
     }
 
     const int chunkSamples = qMax(256, m_sampleRate * kFeedIntervalMs / 1000);
-    const int availableSamples = qMin(chunkSamples, totalSamples - m_samplePosition);
-    const int byteOffset = m_samplePosition * int(sizeof(qint16));
+    const int targetSamplePos = int(m_playbackPositionMs * m_sampleRate / 1000);
 
+    // 与播放器对齐，避免读指针跑飞或落后太多
+    if (qAbs(m_samplePosition - targetSamplePos) > m_sampleRate / 20)
+    {
+        m_samplePosition = qBound(0, targetSamplePos, totalSamples - 1);
+    }
+
+    int readPos = m_samplePosition;
+
+    // 解码尚未追上播放进度：先喂缓存末尾最新数据，保证频谱有动静
+    if (readPos >= totalSamples)
+    {
+        if (m_decodeFinished)
+        {
+            return;
+        }
+        readPos = qMax(0, totalSamples - chunkSamples);
+    }
+
+    const int availableSamples = qMin(chunkSamples, totalSamples - readPos);
+    if (availableSamples <= 0)
+    {
+        return;
+    }
+
+    const int byteOffset = readPos * int(sizeof(qint16));
     emit pcmDataReady(m_pcmCache.mid(byteOffset, availableSamples * int(sizeof(qint16))));
-    m_samplePosition += availableSamples;
+    m_samplePosition = readPos + availableSamples;
 }
 
 void AudioSpectrumAnalyzer::processBuffer()

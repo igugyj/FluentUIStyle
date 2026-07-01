@@ -14,7 +14,8 @@
 
 namespace {
 
-constexpr float kDecayFactor = 0.95f;
+constexpr float kAttackFactor = 0.32f;  // 上升渐进（~60fps 约 50ms 到位）
+constexpr float kDecayFactor = 0.93f;   // 下降稍快，避免拖尾过长
 constexpr float kMinDisplayLevel = 0.02f;
 constexpr float kMinFrequencyHz = 60.0f;
 constexpr float kMaxFrequencyHz = 16000.0f;
@@ -51,6 +52,16 @@ SpectrumWidget::SpectrumWidget(QWidget *parent)
     m_bars.fill(kMinDisplayLevel, m_barCount);
     m_fftInput.fill(0.0f, kFftSize);
     m_fftOutput.resize(kFftSize / 2 + 1);
+    m_window = buildHannWindow(kFftSize);
+    m_windowSum = 0.0f;
+    for (float w : m_window)
+    {
+        m_windowSum += w;
+    }
+    if (m_windowSum <= 0.0f)
+    {
+        m_windowSum = 1.0f;
+    }
 
     m_fftCfg = kiss_fftr_alloc(kFftSize, 0, nullptr, nullptr);
     rebuildLogBinMap();
@@ -250,13 +261,11 @@ void SpectrumWidget::updateSpectrum()
         return;
     }
 
-    static const QVector<float> hannWindow = buildHannWindow(kFftSize);
-
     // 取最新 kFftSize 个样本做 FFT
     const float *recent = m_pcmSamples.constData() + (m_pcmSamples.size() - kFftSize);
     for (int i = 0; i < kFftSize; ++i)
     {
-        m_fftInput[i] = recent[i] * hannWindow[i];
+        m_fftInput[i] = recent[i] * m_window[i];
     }
 
     kiss_fftr(m_fftCfg, m_fftInput.constData(), m_fftOutput.data());
@@ -269,18 +278,32 @@ void SpectrumWidget::updateSpectrum()
         const int start = qBound(1, m_binStart[bar], maxBin - 1);
         const int end = qBound(start + 1, m_binEnd[bar], maxBin);
 
-        float sum = 0.0f;
+        float sumSq = 0.0f;
+        float peakMag = 0.0f;
         int count = 0;
         for (int bin = start; bin < end; ++bin)
         {
             const float re = m_fftOutput[bin].r;
             const float im = m_fftOutput[bin].i;
-            sum += qSqrt(re * re + im * im);
+            const float binMag = qSqrt(re * re + im * im);
+            sumSq += binMag * binMag;
+            peakMag = qMax(peakMag, binMag);
             ++count;
         }
 
-        const float magnitude = count > 0 ? (sum / float(count)) / float(kFftSize) : 0.0f;
-        const float normalized = qBound(0.0f, qLn(1.0f + magnitude * 180.0f) / 5.0f, 1.0f);
+        const float rms = count > 0 ? qSqrt(sumSq / float(count)) : 0.0f;
+        // RMS 反映能量，峰值保留瞬态；高频段用峰值权重更高
+        const float peakWeight = qBound(0.25f, m_bandCenterHz[bar] / 4000.0f, 0.75f);
+        const float blended = rms * (1.0f - peakWeight) + peakMag * peakWeight;
+
+        // kiss_fftr 未归一化，除以 N 得到近似幅度；乘 2 为单边谱
+        const float amplitude = (blended * 2.0f) / float(kFftSize);
+
+        // 粉噪倾斜补偿：音乐高频能量少，右半段需增益
+        const float octavesFrom1k = qLn(qMax(m_bandCenterHz[bar], 100.0f) / 1000.0f) / qLn(2.0f);
+        const float tiltGain = qBound(0.35f, qPow(10.0f, 3.0f * octavesFrom1k / 20.0f), 3.0f);
+
+        const float normalized = qBound(0.0f, qLn(1.0f + amplitude * 180.0f * tiltGain) / 5.0f, 1.0f);
         m_targets[bar] = qMax(kMinDisplayLevel, normalized);
     }
 }
@@ -289,6 +312,7 @@ void SpectrumWidget::rebuildLogBinMap()
 {
     m_binStart.resize(m_barCount);
     m_binEnd.resize(m_barCount);
+    m_bandCenterHz.resize(m_barCount);
 
     const int maxBin = kFftSize / 2;
     const float nyquist = float(m_sampleRate) * 0.5f;
@@ -309,6 +333,7 @@ void SpectrumWidget::rebuildLogBinMap()
 
         m_binStart[bar] = bin0;
         m_binEnd[bar] = bin1;
+        m_bandCenterHz[bar] = qSqrt(f0 * f1);
     }
 }
 
@@ -322,11 +347,11 @@ void SpectrumWidget::applyAttackDecay()
 
         if (target > value)
         {
-            value = target; // Attack：立即跟随上升
+            value += (target - value) * kAttackFactor;
         }
         else
         {
-            value *= kDecayFactor; // Decay：缓慢下降
+            value *= kDecayFactor;
             value = qMax(target, value);
         }
 

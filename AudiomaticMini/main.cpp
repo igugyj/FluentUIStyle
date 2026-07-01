@@ -23,6 +23,8 @@ void setupBundledQtPlugins()
 int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
+    QCoreApplication::setOrganizationName(QStringLiteral("Window11Style"));
+    QCoreApplication::setApplicationName(QStringLiteral("AudiomaticMini"));
 
     setupBundledQtPlugins();
 

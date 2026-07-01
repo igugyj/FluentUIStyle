@@ -69,10 +69,13 @@ private:
     QVector<float> m_pcmSamples;
     QVector<float> m_fftInput;
     QVector<kiss_fft_cpx> m_fftOutput;
+    QVector<float> m_window;
+    float m_windowSum{1.0f};
 
-    /// 每个 bar 对应的 FFT bin 范围 [start, end)
+    /// 每个 bar 对应的 FFT bin 范围 [start, end) 及中心频率（Hz）
     QVector<int> m_binStart;
     QVector<int> m_binEnd;
+    QVector<float> m_bandCenterHz;
 
     /// 原始频带幅值与平滑后的显示值
     QVector<float> m_targets;
