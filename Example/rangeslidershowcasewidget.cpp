@@ -40,21 +40,11 @@ RangeSliderShowcaseWidget::RangeSliderShowcaseWidget(QWidget *parent)
 {
     setFrameShape(QFrame::StyledPanel);
 
-    auto *scroll = new QScrollArea(this);
-    scroll->setWidgetResizable(true);
-    scroll->setFrameShape(QFrame::NoFrame);
-    scroll->viewport()->setAutoFillBackground(false);
-
-    auto *content = new QWidget(scroll);
-    auto *root = new QVBoxLayout(this);
-    root->setContentsMargins(0, 0, 0, 0);
-    root->addWidget(scroll);
-
-    auto *mainLay = new QVBoxLayout(content);
+    auto *mainLay = new QVBoxLayout(this);
     mainLay->setContentsMargins(16, 16, 16, 16);
     mainLay->setSpacing(16);
 
-    auto *title = new QLabel(tr("ExRangeSlider"), content);
+    auto *title = new QLabel(tr("ExRangeSlider"), this);
     {
         QFont f = title->font();
         f.setPointSize(16);
@@ -65,11 +55,11 @@ RangeSliderShowcaseWidget::RangeSliderShowcaseWidget(QWidget *parent)
 
     auto *hint = new QLabel(
         tr("WinUI3 风格双滑块范围选择控件。可调整刻度显示、刻度间隔与 tracking（拖动时是否实时更新数值）。"),
-        content);
+        this);
     hint->setWordWrap(true);
     mainLay->addWidget(hint);
 
-    auto *demoCard = makeCard(content);
+    auto *demoCard = makeCard(this);
     auto *demoLay = new QVBoxLayout(demoCard);
     demoLay->setContentsMargins(12, 12, 12, 12);
     demoLay->setSpacing(12);
@@ -103,7 +93,7 @@ RangeSliderShowcaseWidget::RangeSliderShowcaseWidget(QWidget *parent)
     demoLay->addWidget(valueLabel);
     mainLay->addWidget(demoCard);
 
-    auto *optionsCard = makeCard(content);
+    auto *optionsCard = makeCard(this);
     auto *optionsLay = new QVBoxLayout(optionsCard);
     optionsLay->setContentsMargins(12, 12, 12, 12);
     optionsLay->setSpacing(12);
@@ -147,5 +137,4 @@ RangeSliderShowcaseWidget::RangeSliderShowcaseWidget(QWidget *parent)
             { rangeSlider->setProperty(SliderValueTipProperty, checked); });
 
     mainLay->addStretch();
-    scroll->setWidget(content);
 }
