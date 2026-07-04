@@ -41,6 +41,12 @@
 #include <QMessageBox>
 #include <QVariant>
 #include <QDial>
+#include <QFrame>
+#include <QLabel>
+#include <QSlider>
+#include <QStyleOptionFrame>
+#include <QStyleOptionSlider>
+#include <QStylePainter>
 
 #include <array>
 
@@ -71,6 +77,162 @@ static constexpr int contentItemHMargin = 4;            // margin between conten
 static constexpr int contentHMargin = 2 * 3;            // margin between rounded border and content (= rounded border
                                                         // margin * 3)
 static constexpr int pivotIndicatorPreferredWidth = 24; // Pivot_Grow / Slide / Stretch: fixed bar length, centered
+
+static constexpr int menuItemVMargin = 3; // vertical margin for menu items
+static constexpr int menuItemHMargin = 3; // horizontal margin for menu items
+
+static constexpr int cBShadowBorderWidth = 2;
+static constexpr int cBRoundingRadius = 4;
+
+static constexpr int ProgressBarThickness = 4;
+static constexpr int NavigationSettingsSpinRole = Qt::UserRole + 1001;
+static constexpr int NavigationIconRole = Qt::UserRole + 1;
+
+static constexpr int toolTipShadowBorderWidth = 2;
+static constexpr int toolTipContentPadding = 4;
+static constexpr int kSliderValueTipGapAboveHandle = 4;
+
+class SliderValueTipLabel : public QLabel
+{
+public:
+    explicit SliderValueTipLabel(QWidget *parent)
+        : QLabel(parent)
+    {
+        setWindowFlags(Qt::ToolTip | Qt::FramelessWindowHint | Qt::BypassGraphicsProxyWidget);
+        setAttribute(Qt::WA_TranslucentBackground);
+        setAttribute(Qt::WA_ShowWithoutActivating);
+        setFrameStyle(QFrame::NoFrame);
+        setAlignment(Qt::AlignCenter);
+
+        QFont tipFont = QApplication::font();
+        tipFont.setHintingPreference(QFont::PreferNoHinting);
+        setFont(tipFont);
+        setMargin(1 + style()->pixelMetric(QStyle::PM_ToolTipLabelFrameWidth, nullptr, this));
+    }
+
+protected:
+    void paintEvent(QPaintEvent *ev) override
+    {
+        QStylePainter p(this);
+        QStyleOptionFrame opt;
+        opt.initFrom(this);
+        p.drawPrimitive(QStyle::PE_PanelTipLabel, opt);
+        p.end();
+
+        QLabel::paintEvent(ev);
+    }
+};
+
+static void initSliderStyleOption(const QSlider *slider, QStyleOptionSlider *opt, int position)
+{
+    opt->initFrom(slider);
+    opt->subControls = QStyle::SC_None;
+    opt->activeSubControls = QStyle::SC_None;
+    opt->orientation = slider->orientation();
+    opt->minimum = slider->minimum();
+    opt->maximum = slider->maximum();
+    opt->tickPosition = slider->tickPosition();
+    opt->tickInterval = slider->tickInterval();
+    opt->upsideDown = (slider->orientation() == Qt::Horizontal)
+                          ? (slider->invertedAppearance() != (opt->direction == Qt::RightToLeft))
+                          : (!slider->invertedAppearance());
+    opt->direction = Qt::LeftToRight;
+    opt->sliderPosition = position;
+    opt->sliderValue = position;
+    opt->singleStep = slider->singleStep();
+    opt->pageStep = slider->pageStep();
+    if (slider->orientation() == Qt::Horizontal)
+        opt->state |= QStyle::State_Horizontal;
+}
+
+static SliderValueTipLabel *sliderValueTip(QSlider *slider)
+{
+    QObject *const obj = slider->property(SliderValueTipLabelProperty).value<QObject *>();
+    return obj ? static_cast<SliderValueTipLabel *>(obj) : nullptr;
+}
+
+static bool sliderValueTipEnabled(const QWidget *widget)
+{
+    if (!widget)
+        return false;
+    const QVariant v = widget->property(SliderValueTipProperty);
+    return v.isValid() && v.toBool();
+}
+
+static void showSliderValueTip(QSlider *slider, int value)
+{
+    if (!sliderValueTipEnabled(slider) || !slider->isEnabled() || !slider->isVisible())
+        return;
+
+    auto *tip = sliderValueTip(slider);
+    if (!tip)
+    {
+        tip = new SliderValueTipLabel(nullptr);
+        tip->setObjectName(QStringLiteral("sliderValueTipLabel"));
+        slider->setProperty(SliderValueTipLabelProperty, QVariant::fromValue<QObject *>(tip));
+        QObject::connect(slider, &QObject::destroyed, tip, &QObject::deleteLater);
+        if (auto *style = qobject_cast<FluentUI3Style *>(QApplication::style()))
+            style->polish(tip);
+    }
+
+    tip->setText(QString::number(value));
+    tip->adjustSize();
+
+    QStyleOptionSlider opt;
+    initSliderStyleOption(slider, &opt, value);
+    const QRect handleRect = slider->style()->subControlRect(QStyle::CC_Slider, &opt, QStyle::SC_SliderHandle, slider);
+    if (!handleRect.isValid())
+        return;
+    const qreal outerRadius = qMin(10.0, (slider->orientation() == Qt::Horizontal ? handleRect.height() / 2.0 : handleRect.width() / 2.0) - 1.0);
+    const QPoint globalCenter = slider->mapToGlobal(handleRect.center());
+    int x = 0;
+    int y = 0;
+    if (slider->orientation() == Qt::Horizontal)
+    {
+        x = globalCenter.x() - tip->width() / 2;
+        y = globalCenter.y() - static_cast<int>(outerRadius) - kSliderValueTipGapAboveHandle - tip->height();
+    }
+    else
+    {
+        x = globalCenter.x() - static_cast<int>(outerRadius) - kSliderValueTipGapAboveHandle - tip->width();
+        y = globalCenter.y() - tip->height() / 2;
+    }
+    tip->move(x, y);
+    tip->raise();
+    tip->show();
+}
+
+static void hideSliderValueTip(QSlider *slider)
+{
+    if (auto *tip = sliderValueTip(slider))
+        tip->hide();
+}
+
+static void installSliderValueTipHooks(QSlider *slider)
+{
+    if (!sliderValueTipEnabled(slider))
+        return;
+    if (slider->property(SliderValueTipHooksProperty).toBool())
+        return;
+    slider->setProperty(SliderValueTipHooksProperty, true);
+
+    QObject::connect(slider, &QSlider::sliderPressed, slider,
+                     [slider]()
+                     {
+                         showSliderValueTip(slider, slider->sliderPosition());
+                     });
+    QObject::connect(slider, &QSlider::sliderMoved, slider,
+                     [slider](int value)
+                     {
+                         if (QApplication::mouseButtons() & Qt::LeftButton)
+                             showSliderValueTip(slider, value);
+                     });
+    QObject::connect(slider, &QSlider::sliderReleased, slider,
+                     [slider]()
+                     {
+                         hideSliderValueTip(slider);
+                     });
+}
 
 static QColor segmentedColorFromVariant(const QVariant &v, const QColor &fallback)
 {
@@ -132,15 +294,6 @@ static QColor opaqueBlendBase(const QPalette &palette, bool darkTheme)
     return base;
 }
 
-static constexpr int menuItemVMargin = 3; // vertical margin for menu items
-static constexpr int menuItemHMargin = 3; // horizontal margin for menu items
-
-static constexpr int cBShadowBorderWidth = 2;
-static constexpr int cBRoundingRadius = 4;
-
-static constexpr int ProgressBarThickness = 4;
-static constexpr int NavigationSettingsSpinRole = Qt::UserRole + 1001;
-static constexpr int NavigationIconRole = Qt::UserRole + 1;
 QStyleAnimation *getAnimationEx(QObject *target, const QByteArray &key);
 void startAnimationEx(QStyleAnimation *animation, QObject *target, const QByteArray &key);
 
@@ -2329,6 +2482,39 @@ void FluentUI3Style::drawSpecialButton(QPainter *painter, const QStyleOption *op
             return;
         }
     }
+    else if (objectName == "win_caption_minimize" || objectName == "win_caption_maximize"
+             || objectName == "win_caption_theme" || objectName == "win_caption_pin")
+    {
+        isReturn = true;
+        if (isDown)
+        {
+            painter->setBrush(winUI3Color(subtlePressedColor));
+        }
+        else if (isHover)
+        {
+            painter->setBrush(winUI3Color(subtleHighlightColor));
+        }
+        else
+        {
+            return;
+        }
+    }
+    else if (objectName == "win_caption_close")
+    {
+        isReturn = true;
+        if (isDown)
+        {
+            painter->setBrush(shellCaptionCloseFillColorSecondary);
+        }
+        else if (isHover)
+        {
+            painter->setBrush(shellCaptionCloseFillColorPrimary);
+        }
+        else
+        {
+            return;
+        }
+    }
     else if (objectName == "ScrollLeftButton" || objectName == "ScrollRightButton")
     {
         isReturn = true;
@@ -2435,12 +2621,23 @@ void FluentUI3Style::drawPrimitive(PrimitiveElement element, const QStyleOption 
     }
     case PE_PanelTipLabel:
     {
-        // QProxyStyle::drawPrimitive( element, option, painter, widget );
-        // return;
-        const auto rect = QRectF(option->rect).marginsRemoved(QMarginsF(0.5, 0.5, 0.5, 0.5));
-        const auto pen = highContrastTheme ? option->palette.buttonText().color() : winUI3Color(frameColorLight);
-        // drawRoundedRect( painter, rect, pen, option->palette.toolTipBase() );
-        painter->drawRect(option->rect);
+        const int shadowReserve = toolTipShadowBorderWidth;
+        QRect panelRect = option->rect;
+        panelRect.adjust(shadowReserve, shadowReserve, -shadowReserve, -shadowReserve);
+
+        painter->save();
+        painter->setRenderHint(QPainter::Antialiasing);
+
+        drawFluentShadow(painter, option->rect, toolTipShadowBorderWidth, secondLevelRoundingRadius);
+
+        const QRectF fillRect = panelRect;
+        const QColor fillColor = highContrastTheme ? option->palette.toolTipBase().color()
+                                                   : winUI3Color(menuPanelFill);
+        painter->setPen(highContrastTheme ? QPen(option->palette.windowText().color(), 2) : winUI3Color(frameColorLight));
+        painter->setBrush(fillColor);
+        painter->drawRoundedRect(fillRect, secondLevelRoundingRadius, secondLevelRoundingRadius);
+
+        painter->restore();
         break;
     }
     case PE_FrameTabWidget:
@@ -2955,7 +3152,7 @@ void FluentUI3Style::drawPrimitive(PrimitiveElement element, const QStyleOption 
                 // Example项目:
                 // WidgetBgMode::Pixmap 会把 Base/Window 设为透明，这里保留最低透明度避免 card 过深或过透。
                 //不需要的话，直接使用cardColor即可
-                const bool wallpaperMode = qApp && qApp->property("_q_widget_mode").toBool();
+                const bool wallpaperMode = qApp && qApp->property("_q_widget_mode").toInt() >= 1;
                 if (wallpaperMode)
                 {
                     const int minAlpha = (colorSchemeIndex == 1) ? 72 : 92;
@@ -5320,7 +5517,16 @@ void FluentUI3Style::drawControl(ControlElement element, const QStyleOption *opt
                 const QString text = toolButtonElideText(toolbutton, rect, alignment);
                 // option->state has no State_Sunken here,
                 // windowsvistastyle/CC_ToolButton removes it
-                painter->setPen(controlTextColor(option));
+                if (widget && widget->objectName() == QLatin1String("win_caption_close")
+                    && (widget->underMouse() || (toolbutton->state & State_Sunken)))
+                {
+                    painter->setPen((toolbutton->state & State_Sunken) ? shellCaptionCloseTextFillColorSecondary
+                                                                       : shellCaptionCloseTextFillColorPrimary);
+                }
+                else
+                {
+                    painter->setPen(controlTextColor(option));
+                }
                 proxy()->drawItemText(painter, rect, alignment, toolbutton->palette, toolbutton->state & State_Enabled, text);
             }
             else
@@ -5754,6 +5960,8 @@ void FluentUI3Style::drawControl(ControlElement element, const QStyleOption *opt
 
             auto vTextRect = visualRect(btn->direction, btn->rect, textRect);
             bool accent = widget && widget->property(ButtonAccentStyleProperty).toBool();
+            //TODO， dark模式下，accent 字体是黑色，看着比较刺眼，有accent2，字体改成白色
+            bool accent2 = widget && widget->property("accent2").toBool();
 
             bool checkable = false, checked = false;
             if (const auto *button = qobject_cast<const QPushButton *>(widget))
@@ -5767,8 +5975,7 @@ void FluentUI3Style::drawControl(ControlElement element, const QStyleOption *opt
                 QStyleOption opt = *option;
                 opt.state |= QStyle::State_On;
                 QColor penCol = option->state.testFlag(QStyle::State_Enabled) ? winUI3Color(textOnAccentPrimary) : winUI3Color(textOnAccentDisabled);
-                // penCol.setAlphaF(colorSchemeIndex == 1 ? 0.7 : 1);
-                painter->setPen(/*controlTextColor(&opt, QPalette::Window)*/ penCol);
+                painter->setPen(penCol);
             }
             else
             {
@@ -7247,6 +7454,9 @@ int FluentUI3Style::pixelMetric(PixelMetric metric, const QStyleOption *option, 
     case PM_TabBarTabShiftVertical:
         res = 0;
         break;
+    case PM_ToolTipLabelFrameWidth:
+        res = toolTipShadowBorderWidth + toolTipContentPadding;
+        break;
     default:
         res = QProxyStyle::pixelMetric(metric, option, widget);
     }
@@ -7284,6 +7494,9 @@ void FluentUI3Style::polish(QWidget *widget)
         widget->setAttribute(Qt::WA_Hover);
         widget->installEventFilter(this);
     }
+
+    if (auto *slider = qobject_cast<QSlider *>(widget))
+        installSliderValueTipHooks(slider);
 
     ///没有动态更新主题的需求，可屏蔽
     if (auto le = qobject_cast<QLineEdit *>(widget))
@@ -7347,21 +7560,33 @@ void FluentUI3Style::polish(QWidget *widget)
         widget->setAttribute(Qt::WA_RightToLeft, layoutDirection);
         widget->setAttribute(Qt::WA_WState_Created, wasCreated);
     }
-    // else if ( isToolTip )
-    // {
-    //     // FluentUI ToolTip styling
-    //     bool wasCreated      = widget->testAttribute( Qt::WA_WState_Created );
-    //     bool layoutDirection = widget->testAttribute( Qt::WA_RightToLeft );
+    else if (widget && widget->windowType() == Qt::ToolTip)
+    {
+        bool wasCreated = widget->testAttribute(Qt::WA_WState_Created);
+        bool layoutDirection = widget->testAttribute(Qt::WA_RightToLeft);
 
-    //     widget->setAttribute( Qt::WA_OpaquePaintEvent, false );
-    //     widget->setAttribute( Qt::WA_TranslucentBackground );
-    //     widget->setWindowFlag( Qt::FramelessWindowHint );
-    //     widget->setWindowFlag( Qt::ToolTip );
-    //     widget->setWindowFlag( Qt::NoDropShadowWindowHint );
+        widget->setAttribute(Qt::WA_OpaquePaintEvent, false);
+        widget->setAttribute(Qt::WA_TranslucentBackground);
+        widget->setWindowFlag(Qt::FramelessWindowHint);
+        widget->setWindowFlag(Qt::ToolTip);
+        widget->setWindowFlag(Qt::NoDropShadowWindowHint);
 
-    //     widget->setAttribute( Qt::WA_RightToLeft, layoutDirection );
-    //     widget->setAttribute( Qt::WA_WState_Created, wasCreated );
-    // }
+        colorSchemeIndex = getColorSchemeIndex();
+        QFont toolTipFont = qApp->font();
+        toolTipFont.setHintingPreference(QFont::PreferNoHinting);
+        widget->setFont(toolTipFont);
+
+        if (!highContrastTheme)
+        {
+            QPalette pal = widget->palette();
+            pal.setColor(QPalette::ToolTipBase, winUI3Color(controlFillSolid));
+            pal.setColor(QPalette::ToolTipText, winUI3Color(textPrimary));
+            widget->setPalette(pal);
+        }
+
+        widget->setAttribute(Qt::WA_RightToLeft, layoutDirection);
+        widget->setAttribute(Qt::WA_WState_Created, wasCreated);
+    }
     else if (QComboBox *cb = qobject_cast<QComboBox *>(widget))
     {
         if (cb->isEditable())
@@ -7463,7 +7688,12 @@ void FluentUI3Style::unpolish(QWidget *widget)
 #endif // QT_CONFIG(commandlinkbutton)
         QProxyStyle::unpolish(widget);
 
-    if (qobject_cast<QTabBar *>(widget) && widget->property("TabBarStyle").toInt() == TabBarStyle::Segmented_WinUI3)
+    if (qobject_cast<QDial *>(widget))
+        widget->removeEventFilter(this);
+    if (auto *slider = qobject_cast<QSlider *>(widget))
+        hideSliderValueTip(slider);
+
+    if (qobject_cast<QTabBar *>(widget) && widget->property(TabBarStyleProperty).toInt() == TabBarStyle::Segmented_WinUI3)
     {
         widget->removeEventFilter(this);
     }
@@ -8035,6 +8265,26 @@ QIcon FluentUI3Style::fluentIcon(const QChar &ch, const QColor &color) const
     p.drawText(pix.rect(), Qt::AlignCenter, ch);
 
     return QIcon(pix);
+}
+
+void FluentUI3Style::drawToolTipShadow(QPainter *painter, const QRect &panelRect, int radius) const
+{
+    painter->save();
+    painter->setRenderHint(QPainter::Antialiasing);
+    painter->setPen(Qt::NoPen);
+
+    const int shadowWidth = toolTipShadowBorderWidth;
+    const int peakAlpha = colorSchemeIndex == 1 ? 56 : 40;
+    for (int spread = shadowWidth; spread >= 1; --spread)
+    {
+        QRectF shadowRect = QRectF(panelRect).adjusted(-spread, -spread, spread, spread);
+
+        QColor color(0, 0, 0, peakAlpha * spread / shadowWidth);
+        painter->setBrush(color);
+        painter->drawRoundedRect(shadowRect, radius + spread * 0.5, radius + spread * 0.5);
+    }
+
+    painter->restore();
 }
 
 void FluentUI3Style::drawFluentShadow(QPainter *painter, QRect rect, int shadowWidth, int radius) const

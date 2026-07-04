@@ -68,6 +68,31 @@ Happy coding.
 
 ## Build (detailed)
 
+### Get the source (including submodules)
+
+The Example app’s frameless window and DWM backdrop use **[QWindowKit](https://github.com/stdware/qwindowkit)**, vendored as a Git **submodule** at `3rd/qwindowkit/`.  
+A plain `git clone` does **not** fetch submodule contents; an empty or missing directory will break CMake.
+
+#### First-time clone (recommended)
+
+```powershell
+git clone --recursive https://github.com/XHY-ChuJian/FluentUIStyle.git
+cd FluentUIStyle
+```
+
+#### Already cloned the repo
+
+```powershell
+git pull
+git submodule update --init --recursive
+```
+
+> **Note:** `git pull` alone does **not** update submodules. If CMake cannot find `3rd/qwindowkit`, run `git submodule update --init --recursive` again.
+
+Other third-party code (e.g. `3rd/kissfft`) is committed directly in this repo.
+
+---
+
 ### Prerequisites
 
 - OS: Windows 10/11 recommended.

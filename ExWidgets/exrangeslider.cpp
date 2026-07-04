@@ -1,6 +1,7 @@
 #include "exrangeslider.h"
 
 #include "fluentui3colors.h"
+#include "fluentui3styleproperties.h"
 
 #include <QApplication>
 #include <QEvent>
@@ -14,6 +15,11 @@
 #include <QVariantAnimation>
 #include <QWheelEvent>
 #include <QtMath>
+#include <QFrame>
+#include <QLabel>
+#include <QStyle>
+#include <QStyleOptionFrame>
+#include <QStylePainter>
 
 namespace
 {
@@ -24,6 +30,7 @@ constexpr int kGrooveThickness = 4;
 constexpr int kTickThickness = 4;
 constexpr int kTickGap = 6;
 constexpr int kAnimDuration = 300;
+constexpr int kGapAboveHandle = 4;
 constexpr int kMinExtent = 24;
 constexpr int kCrossExtent = 32;
 
@@ -246,6 +253,41 @@ void ExRangeSliderNode::syncInnerAnimation()
 }
 
 // =============================================================================
+// RangeSliderTipLabel
+// =============================================================================
+
+class RangeSliderTipLabel : public QLabel
+{
+public:
+    explicit RangeSliderTipLabel(QWidget *parent)
+        : QLabel(parent)
+    {
+        setWindowFlags(Qt::ToolTip | Qt::FramelessWindowHint | Qt::BypassGraphicsProxyWidget);
+        setAttribute(Qt::WA_TranslucentBackground);
+        setAttribute(Qt::WA_ShowWithoutActivating);
+        setFrameStyle(QFrame::NoFrame);
+        setAlignment(Qt::AlignCenter);
+
+        QFont tipFont = QApplication::font();
+        tipFont.setHintingPreference(QFont::PreferNoHinting);
+        setFont(tipFont);
+        setMargin(1 + style()->pixelMetric(QStyle::PM_ToolTipLabelFrameWidth, nullptr, this));
+    }
+
+protected:
+    void paintEvent(QPaintEvent *ev) override
+    {
+        QStylePainter p(this);
+        QStyleOptionFrame opt;
+        opt.initFrom(this);
+        p.drawPrimitive(QStyle::PE_PanelTipLabel, opt);
+        p.end();
+
+        QLabel::paintEvent(ev);
+    }
+};
+
+// =============================================================================
 // ExRangeSliderPrivate
 // =============================================================================
 
@@ -268,6 +310,8 @@ public:
     void setActiveHandle(ExRangeSlider::Handle h);
     void setHoveredHandle(ExRangeSlider::Handle h);
     void setPressedHandle(ExRangeSlider::Handle h);
+    void showPressedHandleToolTip(int value);
+    void hidePressedHandleToolTip();
     qreal currentInnerRadius(ExRangeSlider::Handle h) const;
     void updateAccessibility();
     void paintHandle(QPainter *painter, const QPointF &center, qreal inner, bool focusRing,
@@ -299,6 +343,7 @@ public:
 
     ExRangeSliderNode *m_first = nullptr;
     ExRangeSliderNode *m_second = nullptr;
+    RangeSliderTipLabel *m_valueTip = nullptr;
 };
 
 ExRangeSliderPrivate::ExRangeSliderPrivate(ExRangeSlider *q)
@@ -397,6 +442,50 @@ QPointF ExRangeSliderPrivate::handleCenter(int value) const
     if (m_orientation == Qt::Horizontal)
         return QPointF(pos, q->height() * 0.5);
     return QPointF(q->width() * 0.5, pos);
+}
+
+void ExRangeSliderPrivate::showPressedHandleToolTip(int value)
+{
+    Q_Q(ExRangeSlider);
+    const QVariant showTip = q->property(SliderValueTipProperty);
+    if (!showTip.isValid() || !showTip.toBool())
+        return;
+    if (m_pressedHandle == ExRangeSlider::NoHandle || !q->isEnabled() || !q->isVisible())
+        return;
+
+    if (!m_valueTip)
+    {
+        m_valueTip = new RangeSliderTipLabel(nullptr);
+        QObject::connect(q, &QObject::destroyed, m_valueTip, &QObject::deleteLater);
+        QApplication::style()->polish(m_valueTip);
+    }
+
+    m_valueTip->setText(QString::number(value));
+    m_valueTip->adjustSize();
+
+    const QPointF center = handleCenter(value);
+    const QPoint centerGlobal = q->mapToGlobal(QPoint(qRound(center.x()), qRound(center.y())));
+    int x = 0;
+    int y = 0;
+    if (m_orientation == Qt::Horizontal)
+    {
+        x = centerGlobal.x() - m_valueTip->width() / 2;
+        y = centerGlobal.y() - static_cast<int>(kSliderHandlePaintRadius) - kGapAboveHandle - m_valueTip->height();
+    }
+    else
+    {
+        x = centerGlobal.x() - static_cast<int>(kSliderHandlePaintRadius) - kGapAboveHandle - m_valueTip->width();
+        y = centerGlobal.y() - m_valueTip->height() / 2;
+    }
+    m_valueTip->move(x, y);
+    m_valueTip->raise();
+    m_valueTip->show();
+}
+
+void ExRangeSliderPrivate::hidePressedHandleToolTip()
+{
+    if (m_valueTip)
+        m_valueTip->hide();
 }
 
 QRectF ExRangeSliderPrivate::grooveRect() const
@@ -587,6 +676,22 @@ ExRangeSlider::ExRangeSlider(Qt::Orientation orientation, QWidget *parent)
         setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
 
     d->updateAccessibility();
+
+    connect(this, &ExRangeSlider::sliderPressed, this, [this, d](ExRangeSlider::Handle handle) {
+        if (handle == NoHandle)
+            return;
+        const int v = handle == LowerHandle ? lowerValue() : upperValue();
+        d->showPressedHandleToolTip(v);
+    });
+    connect(this, &ExRangeSlider::sliderMoved, this, [this, d](int lower, int upper) {
+        if (d->m_pressedHandle == NoHandle)
+            return;
+        const int v = d->m_pressedHandle == LowerHandle ? lower : upper;
+        d->showPressedHandleToolTip(v);
+    });
+    connect(this, &ExRangeSlider::sliderReleased, this, [d](ExRangeSlider::Handle) {
+        d->hidePressedHandleToolTip();
+    });
 }
 
 ExRangeSlider::~ExRangeSlider()

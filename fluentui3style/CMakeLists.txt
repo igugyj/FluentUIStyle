@@ -19,7 +19,7 @@ add_library(FluentUI3Style SHARED
     ${LIBRARY_SOURCES}
 )
 
-target_compile_definitions(FluentUI3Style PRIVATE FLUENTUI3STYLE_LIBRARY)
+target_compile_definitions(FluentUI3Style PRIVATE FLUENT_USE_QT_STYLE FLUENTUI3STYLE_LIBRARY)
 
 target_include_directories(FluentUI3Style PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
@@ -34,6 +34,10 @@ target_link_libraries(FluentUI3Style PUBLIC
     Qt${QT_VERSION_MAJOR}::Widgets
     Qt${QT_VERSION_MAJOR}::Svg
 )
+
+if(WIN32)
+    target_link_libraries(FluentUI3Style PRIVATE dwmapi)
+endif()
 
 
 

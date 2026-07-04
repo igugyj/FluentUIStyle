@@ -1,3 +1,14 @@
+【更新内容2026-7-1】
+1.集成 QWindowKit 无边框窗口，新增 FluentTitleBar / FluentWindowFrame 自定义标题栏
+2.窗口背景支持 DWM Blur、Acrylic、Mica、Mica Alt 四种 backdrop 模式
+3.Example 新增标题栏搜索框示例
+4.新增 ExRangeSlider 双滑块范围选择控件（WinUI3 风格）
+5.QSlider 与 ExRangeSlider 拖动时显示数值 tooltip（可经 showValueTip 关闭）
+6.QDial 新增 WinUI3 风格样式：DialDots / DialRing / DialThumb（经 dialStyle 属性切换，可选 dialDrawValue 显示当前值）
+7.新增 ExColorPicker / ExColorPickerButton（WinUI3 CommunityToolkit 风格取色控件）
+8.新增 ExMessageBox（基于 QMessageBox 的 WinUI3 风格消息弹窗）
+9.Example 集成 Audiomatic Mini Player（本地播放、频谱可视化、Jamendo 在线音乐）
+
 【更新内容2026-5-9】
 1.新增WinUI3导航控件
 2.SwtichButton完善动画效果
